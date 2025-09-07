@@ -2,6 +2,9 @@ use crate::events::{AppEvent, Event, EventHandler};
 use ratatui::{
     DefaultTerminal,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
+    layout::Rect,
+    style::{Style, Stylize},
+    widgets::{Block, BorderType, block::Title},
 };
 
 /// Application.
@@ -9,8 +12,8 @@ use ratatui::{
 pub struct App {
     /// Is the application running?
     pub running: bool,
-    /// Counter.
-    pub counter: u8,
+    /// What chains/coins should be watched
+    pub watching: Vec<String>,
     /// Event handler.
     pub events: EventHandler,
 }
@@ -18,8 +21,8 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         Self {
+            watching: vec!["SOL-USDC".to_string()],
             running: true,
-            counter: 0,
             events: EventHandler::new(),
         }
     }
@@ -27,14 +30,30 @@ impl Default for App {
 
 impl App {
     /// Constructs a new instance of [`App`].
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(watching: Option<Vec<String>>) -> Self {
+        match watching {
+            Some(v) => Self {
+                watching: v,
+                ..Default::default()
+            },
+            None => Self::default(),
+        }
     }
 
     /// Run the application's main loop.
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
         while self.running {
-            terminal.draw(|frame| frame.render_widget(&self, frame.area()))?;
+            terminal.draw(|frame| {
+                frame.render_widget(
+                    Block::bordered()
+                        .style(Style::new().cyan())
+                        .border_type(BorderType::Rounded)
+                        .title("SOL-USDC".gray()),
+                    frame.area(),
+                );
+                frame.render_widget("sex 2", Rect::new(5, 5, 10, 10));
+            })?;
+
             match self.events.next().await? {
                 Event::Tick => self.tick(),
                 Event::Crossterm(event) => match event {
@@ -42,8 +61,6 @@ impl App {
                     _ => {}
                 },
                 Event::App(app_event) => match app_event {
-                    AppEvent::Increment => self.increment_counter(),
-                    AppEvent::Decrement => self.decrement_counter(),
                     AppEvent::Quit => self.quit(),
                 },
             }
@@ -58,8 +75,6 @@ impl App {
             KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.events.send(AppEvent::Quit)
             }
-            KeyCode::Right => self.events.send(AppEvent::Increment),
-            KeyCode::Left => self.events.send(AppEvent::Decrement),
             // Other handlers you could add here.
             _ => {}
         }
@@ -75,13 +90,5 @@ impl App {
     /// Set running to false to quit the application.
     pub fn quit(&mut self) {
         self.running = false;
-    }
-
-    pub fn increment_counter(&mut self) {
-        self.counter = self.counter.saturating_add(1);
-    }
-
-    pub fn decrement_counter(&mut self) {
-        self.counter = self.counter.saturating_sub(1);
     }
 }

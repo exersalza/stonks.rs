@@ -26,3 +26,4 @@ terminal_size = "0.4.3"
 ratatui = { version = "0.29.0", features = ["palette", "macros", "all-widgets"] }
 color-eyre = "0.6.5"
 crossterm = { version = "0.28.1", features = ["event-stream"] }
+clap = { version = "4.5.47", features = ["derive"] }
