@@ -1,0 +1,28 @@
+[package]
+name = "crypto_watcher"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+reqwest = "0.12.23"
+tokio = { version = "1.47.1", features = ["full"] }
+tokio-tungstenite = { version = "0.27.0", features = ["native-tls"] }
+parking_lot = "0.12.3"
+anyhow = "1.0.79"
+serde = { version = "1.0.192", features = ["derive"] }
+toml = "0.8.8"
+notify = "6.1.1"
+serde_derive = "1.0.192"
+lazy_static = "1.4.0"
+futures = "0.3.31"
+serde_json = "1.0"
+#crypto
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+p256 = { version = "0.11", features = ["pem", "ecdsa-core"] }
+ecdsa = "0.15"
+terminal_size = "0.4.3"
+ratatui = { version = "0.29.0", features = ["palette", "macros", "all-widgets"] }
+color-eyre = "0.6.5"
+crossterm = { version = "0.28.1", features = ["event-stream"] }
