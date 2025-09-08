@@ -2,9 +2,8 @@ use crate::events::{AppEvent, Event, EventHandler};
 use ratatui::{
     DefaultTerminal,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    layout::Rect,
     style::{Style, Stylize},
-    widgets::{Block, BorderType, block::Title},
+    widgets::{Block, BorderType},
 };
 
 /// Application.
@@ -13,6 +12,7 @@ pub struct App {
     /// Is the application running?
     pub running: bool,
     /// What chains/coins should be watched
+    /// NOTE: this is just used to show it on the frontend for user information
     pub watching: Vec<String>,
     /// Event handler.
     pub events: EventHandler,
@@ -36,7 +36,7 @@ impl App {
                 watching: v,
                 ..Default::default()
             },
-            None => Self::default(),
+            _ => Self::default(),
         }
     }
 
@@ -48,10 +48,9 @@ impl App {
                     Block::bordered()
                         .style(Style::new().cyan())
                         .border_type(BorderType::Rounded)
-                        .title("SOL-USDC".gray()),
+                        .title("SOL-USDC".gray().into_centered_line()),
                     frame.area(),
                 );
-                frame.render_widget("sex 2", Rect::new(5, 5, 10, 10));
             })?;
 
             match self.events.next().await? {

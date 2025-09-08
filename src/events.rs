@@ -1,6 +1,5 @@
 // used template from: https://github.com/ratatui/templates/blob/main/event-driven-async/template/src/event.rs
 
-
 use color_eyre::eyre::OptionExt;
 use futures::{FutureExt, StreamExt};
 use ratatui::crossterm::event::Event as CrosstermEvent;
