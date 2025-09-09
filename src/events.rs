@@ -5,6 +5,8 @@ use futures::{FutureExt, StreamExt};
 use ratatui::crossterm::event::Event as CrosstermEvent;
 use tokio::sync::mpsc;
 
+use crate::sockets::WsMessage;
+
 #[derive(Clone, Debug)]
 pub enum Event {
     Tick,
@@ -14,6 +16,8 @@ pub enum Event {
 
 #[derive(Clone, Debug)]
 pub enum AppEvent {
+    /// New message from websocket
+    WSMessage(WsMessage),
     /// Quit the application.
     Quit,
 }
@@ -86,6 +90,9 @@ impl EventTask {
             tokio::select! {
               _ = self.sender.closed() => {
                 break;
+              }
+              _ = tick => {
+                  self.send(Event::Tick);
               }
               Some(Ok(evt)) = crossterm_event => {
                 self.send(Event::Crossterm(evt));

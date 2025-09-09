@@ -1,7 +1,6 @@
 use clap::Parser;
-use ratatui::palette::cast::ComponentsInto;
 
-use crate::{app::App, opts::CliOpts, sockets::BaseSocket};
+use crate::{app::App, events::EventHandler, opts::CliOpts, sockets::{BaseSocket, WsMessage}};
 
 mod macros;
 mod opts;
@@ -15,14 +14,19 @@ pub mod ui;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
-    tokio::spawn(BaseSocket::connect());
-
+    let opts = CliOpts::parse();
     color_eyre::install()?;
+
+    tokio::spawn(BaseSocket::connect(opts.watching));
 
     let opts = CliOpts::parse();
 
     let term = ratatui::init();
-    let res = App::new(Some(opts.watching)).run(term).await;
+
+    let app = App::new( Some(opts.watching));
+
+
+    let res = app.run(term).await;
 
     ratatui::restore();
     res
