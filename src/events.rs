@@ -1,5 +1,7 @@
 // used template from: https://github.com/ratatui/templates/blob/main/event-driven-async/template/src/event.rs
 
+use std::time;
+
 use color_eyre::eyre::OptionExt;
 use futures::{FutureExt, StreamExt};
 use ratatui::crossterm::event::Event as CrosstermEvent;
@@ -85,13 +87,20 @@ impl EventTask {
     async fn run(self) -> color_eyre::Result<()> {
         let mut reader = crossterm::event::EventStream::new();
 
+        //                                                                                  replace
+        //                                                                                  with
+        //                                                                                  the
+        //                                                                                  opts
+        //                                                                                  laters
+        let mut tick = tokio::time::interval(time::Duration::from_millis(1000));
+
         loop {
             let crossterm_event = reader.next().fuse();
             tokio::select! {
               _ = self.sender.closed() => {
                 break;
               }
-              _ = tick => {
+              _ = tick.tick() => {
                   self.send(Event::Tick);
               }
               Some(Ok(evt)) = crossterm_event => {

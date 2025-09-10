@@ -1,9 +1,16 @@
-use crate::{events::{AppEvent, Event, EventHandler}, sockets::fff};
+use crate::{
+    events::{AppEvent, Event, EventHandler},
+    sockets::{WsMessage, fff},
+};
+
+use colorgrad;
 use ratatui::{
-    DefaultTerminal,
-    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    style::{Style, Stylize},
-    widgets::{Block, BorderType},
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers}, layout::{Constraint, Layout, Rect}, style::{Color, Style, Stylize}, text::Text, widgets::{Block, BorderType}, DefaultTerminal, Frame
+};
+use ringbuffer::RingBuffer;
+use tui_gradient_block::{
+    gradient_block::{GradientBlock, Position},
+    theme_presets::multi_color::t_colorgrad_warm,
 };
 
 /// Application.
@@ -30,7 +37,7 @@ impl Default for App {
 
 impl App {
     /// Constructs a new instance of [`App`].
-    pub fn new( watching: Option<Vec<String>>) -> Self {
+    pub fn new(watching: Option<Vec<String>>) -> Self {
         match watching {
             Some(v) => Self {
                 watching: v,
@@ -44,13 +51,14 @@ impl App {
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
         while self.running {
             terminal.draw(|frame| {
-                frame.render_widget(
-                    Block::bordered()
-                        .style(Style::new().cyan())
-                        .border_type(BorderType::Rounded)
-                        .title("SOL-USDC".gray().into_centered_line()),
-                    frame.area(),
-                );
+                if self.watching.len() == 0 {
+                    frame.render_widget(Text::from("You dont have any Coins selected").centered(), frame.area());
+                    return
+                }
+
+                let [top, bottom] = Layout::vertical([Constraint::Fill(1); 2]).areas(frame.area());
+
+                self.render_chart(frame, top, self.watching[0].clone());
             })?;
 
             match self.events.next().await? {
@@ -62,13 +70,22 @@ impl App {
                 Event::App(app_event) => match app_event {
                     AppEvent::Quit => self.quit(),
                     AppEvent::WSMessage(m) => {
-                        panic!()
-                    },
+                    }
                     _ => {}
                 },
             }
         }
         Ok(())
+    }
+
+    fn render_chart(&self, frame: &mut Frame, area: Rect, coin: String) {
+        frame.render_widget(
+            Block::bordered()
+                .style(Color::Rgb(255, 0, 100))
+                .border_type(BorderType::Rounded)
+                .title(coin.gray().into_centered_line()),
+            area,
+        );
     }
 
     /// Handles the key events and updates the state of [`App`].
@@ -90,9 +107,6 @@ impl App {
     /// needs to be updated at a fixed frame rate. E.g. polling a server, updating an animation.
     pub fn tick(&self) {
         let lock = fff.lock();
-
-        let _ = dbg!(lock);
-
     }
 
     /// Set running to false to quit the application.
