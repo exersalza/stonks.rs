@@ -1,14 +1,15 @@
 #[macro_export]
 macro_rules! pub_fields {
     {
-        $(#[derive($($macros:tt)*)])*
+        $(#[$struct_attr:meta])*
         struct $name:ident {
-            $($field:ident: $t:ty,)*
+            $( $(#[$field_attr:meta])* $field:ident: $t:ty),* $(,)?
         }
     } => {
-        $(#[derive($($macros)*)])*
+        $(#[$struct_attr])*
         pub struct $name {
-            $(pub $field: $t),*
+            $( $(#[$field_attr])* pub $field: $t),*
         }
-    }
+    };
 }
+

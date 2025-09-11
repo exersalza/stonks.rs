@@ -30,3 +30,4 @@ clap = { version = "4.5.47", features = ["derive"] }
 ringbuffer = "0.16.0"
 tui-gradient-block = "0.1.3"
 colorgrad = "0.7.2"
+chrono = "0.4.42"

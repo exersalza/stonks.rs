@@ -9,6 +9,8 @@ use tokio::sync::mpsc;
 
 use crate::sockets::WsMessage;
 
+pub const TICK_RATE: u64 = 250;
+
 #[derive(Clone, Debug)]
 pub enum Event {
     Tick,
@@ -92,7 +94,7 @@ impl EventTask {
         //                                                                                  the
         //                                                                                  opts
         //                                                                                  laters
-        let mut tick = tokio::time::interval(time::Duration::from_millis(1000));
+        let mut tick = tokio::time::interval(time::Duration::from_millis(TICK_RATE));
 
         loop {
             let crossterm_event = reader.next().fuse();

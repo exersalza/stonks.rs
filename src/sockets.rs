@@ -1,10 +1,10 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::{collections::VecDeque, sync::Arc, thread, time::Duration};
 
 use futures::{SinkExt, StreamExt};
+use parking_lot::Mutex;
 use ringbuffer::{AllocRingBuffer, ConstGenericRingBuffer, RingBuffer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use parking_lot::Mutex;
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{Message, Utf8Bytes, client::IntoClientRequest},
@@ -19,22 +19,39 @@ lazy_static::lazy_static! {
 crate::pub_fields! {
     #[derive(Debug, Clone, Deserialize, Serialize)]
     struct WsMessage {
+        /// The type of the message
         r#type: String,
+        /// Gets increased by every message
         sequence: usize,
+        /// The product that this message comes from
         product_id: String,
-        price: String,
+        /// The current Price
+        price: f64,
+
         open_24h: String,
+        /// The total trading volume in the past 24 hours
         volume_24h: String,
+        /// The lowest price in the last 24 hours
         low_24h: String,
+        /// The highest price in the last 24 hours
         high_24h: String,
+
         volume_30d: String,
+        /// The best bid to the current price
         best_bid: String,
+        /// the volume of the best bid
         best_bid_size: String,
+        /// The best ask price
         best_ask: String,
+        /// The volume of the best ask price
         best_ask_size: String,
+        /// if if sold or buyed
         side: String,
+        /// The time as an ISO 8601 timestring eg. 2022-10-19T23:28:22.061769Z
         time: String,
+        /// The corresponding id to this transaction
         trade_id: usize,
+
         last_size: String,
     }
 }
