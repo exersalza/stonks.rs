@@ -1,5 +1,6 @@
 use std::{collections::VecDeque, sync::Arc, thread, time::Duration};
 
+use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use parking_lot::Mutex;
 use ringbuffer::{AllocRingBuffer, ConstGenericRingBuffer, RingBuffer};
@@ -10,10 +11,10 @@ use tokio_tungstenite::{
     tungstenite::{Message, Utf8Bytes, client::IntoClientRequest},
 };
 
-use crate::utils::FEED_WS_URL;
+use crate::{opts::CliOpts, utils::FEED_WS_URL};
 
 lazy_static::lazy_static! {
-    pub static ref fff: Arc<Mutex<AllocRingBuffer<WsMessage>>> = Arc::new(Mutex::new(AllocRingBuffer::new(5000)));
+    pub static ref fff: Arc<Mutex<AllocRingBuffer<WsMessage>>> = Arc::new(Mutex::new(AllocRingBuffer::new(CliOpts::parse().watching.len() * 5000)));
 }
 
 crate::pub_fields! {

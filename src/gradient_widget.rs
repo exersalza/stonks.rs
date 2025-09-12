@@ -21,12 +21,6 @@ pub fn interpolate_color(start: Color, end: Color, ratio: f32) -> Color {
 /// Configuration for gradient colors on borders
 #[derive(Clone, Debug)]
 pub struct GradientConfig {
-    pub horizontal_start: Color,
-    pub horizontal_end: Color,
-    pub vertical_start: Color,
-    pub vertical_end: Color,
-
-
     /// This starts in the top left and goes to the right
     pub top_start: Color,
     pub top_end: Color,
@@ -44,11 +38,6 @@ pub struct GradientConfig {
 impl Default for GradientConfig {
     fn default() -> Self {
         Self {
-            horizontal_start: Color::Rgb(255, 0, 0), // Red
-            horizontal_end: Color::Rgb(0, 0, 255),   // Blue
-            vertical_start: Color::Rgb(255, 0, 0),   // Red
-            vertical_end: Color::Rgb(0, 0, 255),     // Green
-
             top_start: Color::Rgb(255, 0, 0),
             top_end: Color::Rgb(0, 0, 255),
             right_start: Color::Rgb(0, 0, 255),
@@ -63,14 +52,27 @@ impl Default for GradientConfig {
 
 impl GradientConfig {
     /// Creates a new gradient configuration with default values
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(
+        top_start: Color,
+        top_end: Color,
+        right_start: Color,
+        right_end: Color,
+        bottom_start: Color,
+        bottom_end: Color,
+        left_start: Color,
+        left_end: Color,
+    ) -> Self {
+        Self {
+            top_start,
+            top_end,
+            right_start,
+            right_end,
+            bottom_start,
+            bottom_end,
+            left_start,
+            left_end,
+        }
     }
-
-
-
-
-
 }
 
 /// Wrapper that renders any widget with a customizable gradient border
@@ -128,7 +130,7 @@ impl<W> GradientWrapper<W> {
         let config = &self.gradient_config;
 
         // Calculate corner colors by blending horizontal and vertical gradients
-        let top_left_color = config.horizontal_start; // Start of both gradients
+        let top_left_color = config.top_start; // Start of both gradients
 
         let top_right_color = interpolate_color(
             config.top_start,
@@ -152,12 +154,15 @@ impl<W> GradientWrapper<W> {
         buf.get_mut(area.left(), area.top())
             .set_char('╭') // Rounded top-left
             .set_fg(top_left_color);
+
         buf.get_mut(area.right() - 1, area.top())
             .set_char('╮') // Rounded top-right
             .set_fg(top_right_color);
+
         buf.get_mut(area.left(), area.bottom() - 1)
             .set_char('╰') // Rounded bottom-left
             .set_fg(bottom_left_color);
+
         buf.get_mut(area.right() - 1, area.bottom() - 1)
             .set_char('╯') // Rounded bottom-right
             .set_fg(bottom_right_color);
@@ -166,8 +171,8 @@ impl<W> GradientWrapper<W> {
         for x in area.left() + 1..area.right() - 1 {
             let ratio = (x - area.left() - 1) as f32 / (area.width - 2) as f32;
             let color = interpolate_color(config.top_start, config.top_end, ratio);
-            let b_color = interpolate_color(config.bottom_start, config.bottom_end, (ratio - 1.0).abs());
-
+            let b_color =
+                interpolate_color(config.bottom_start, config.bottom_end, (ratio - 1.0).abs());
 
             buf.get_mut(x, area.top()).set_char('─').set_fg(color);
 
@@ -180,11 +185,13 @@ impl<W> GradientWrapper<W> {
         for y in area.top() + 1..area.bottom() - 1 {
             let ratio = (y - area.top() - 1) as f32 / (area.height - 2) as f32;
             let r_color = interpolate_color(config.right_start, config.right_end, ratio);
-            let color = interpolate_color(config.left_start, config.left_end, ( ratio - 1.0 ).abs());
+            let color = interpolate_color(config.left_start, config.left_end, (ratio - 1.0).abs());
 
             buf.get_mut(area.left(), y).set_char('│').set_fg(color);
 
-            buf.get_mut(area.right() - 1, y).set_char('│').set_fg(r_color);
+            buf.get_mut(area.right() - 1, y)
+                .set_char('│')
+                .set_fg(r_color);
         }
 
         // Draw title if provided

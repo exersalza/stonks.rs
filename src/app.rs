@@ -30,8 +30,19 @@ pub const LOWER_COLOR_BOUND: u8 = 150;
 pub const CHANGE_COLOR_BY: u8 = 5;
 
 lazy_static! {
-    pub static ref CRYPTO_COLOR_CODES: HashMap<String, Color> =
-        HashMap::from([("SOL-USD".to_string(), Color::Rgb(53, 69, 255)),]);
+    pub static ref CRYPTO_COLOR_CODES: HashMap<String, GradientConfig> = HashMap::from([(
+        "SOL-USD".to_string(),
+        GradientConfig::new(
+            Color::Rgb(154, 69, 254), // PURUPLE
+            Color::Rgb(87, 152, 203), // PURPLE - GREEN
+            Color::Rgb(87, 152, 203), // PURPLE - GREEN
+            Color::Rgb(21, 240, 150), // GREEN
+            Color::Rgb(21, 240, 150), // GREEN
+            Color::Rgb(87, 152, 203), // PURPLE - GREEN
+            Color::Rgb(87, 152, 203), // PURPLE - GREEN
+            Color::Rgb(154, 69, 254), // PURUPLE
+        )
+    ),]);
 }
 
 fn convert_timestamp_to_locale(ts: f64) -> String {
@@ -45,7 +56,6 @@ fn convert_timestamp_to_locale(ts: f64) -> String {
 fn hilo(data: &Vec<WsMessage>) -> (f64, f64) {
     let mut hi = 0.0;
     let mut lo = 0.0;
-
 
     // wtf
     for ele in data {
@@ -133,12 +143,104 @@ impl App {
                 }
                 // TODO: add layouts for differente screen sizes and for the amount of chains to
                 // watch
-                let [top, bottom] = Layout::vertical([Constraint::Fill(1); 2]).areas(frame.area());
 
-                self.render_chart(frame, top, self.watching[0].clone(), 60000.0, 0.5);
+                let t_changee = 60000.0;
+                let p_changee = 1.0;
 
-                if self.watching.len() == 2 {
-                    self.render_chart(frame, bottom, self.watching[1].clone(), 60000.0, 0.5);
+                match self.watching.len() {
+                    1 => {
+                        self.render_chart(
+                            frame,
+                            frame.area(),
+                            self.watching[0].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                        return;
+                    }
+                    2 => {
+                        let [top, bottom] =
+                            Layout::vertical([Constraint::Fill(1); 2]).areas(frame.area());
+                        self.render_chart(
+                            frame,
+                            top,
+                            self.watching[0].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                        self.render_chart(
+                            frame,
+                            bottom,
+                            self.watching[1].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                    }
+                    3 => {
+                        let [left, right] =
+                            Layout::horizontal([Constraint::Fill(1); 2]).areas(frame.area());
+                        let [top, bottom] = Layout::vertical([Constraint::Fill(1); 2]).areas(left);
+
+                        self.render_chart(
+                            frame,
+                            top,
+                            self.watching[0].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                        self.render_chart(
+                            frame,
+                            bottom,
+                            self.watching[1].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                        self.render_chart(
+                            frame,
+                            right,
+                            self.watching[2].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                    }
+                    4 => {
+                        let [left, right] =
+                            Layout::horizontal([Constraint::Fill(1); 2]).areas(frame.area());
+                        let [l_top, l_bottom] =
+                            Layout::vertical([Constraint::Fill(1); 2]).areas(left);
+                        let [r_top, r_bottom] =
+                            Layout::vertical([Constraint::Fill(1); 2]).areas(right);
+
+                        self.render_chart(
+                            frame,
+                            l_top,
+                            self.watching[0].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                        self.render_chart(
+                            frame,
+                            l_bottom,
+                            self.watching[1].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                        self.render_chart(
+                            frame,
+                            r_top,
+                            self.watching[2].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                        self.render_chart(
+                            frame,
+                            r_bottom,
+                            self.watching[3].clone(),
+                            t_changee,
+                            p_changee,
+                        );
+                    }
+                    _ => {}
                 }
             })?;
 
@@ -166,22 +268,6 @@ impl App {
         t_changee: f64,
         p_changee: f64,
     ) {
-        /* frame.render_widget(
-            Block::bordered()
-                .style(Color::Rgb(
-                    if self.border_animation {
-                        self.color
-                    } else {
-                        255
-                    },
-                    0,
-                    100,
-                ))
-                .border_type(BorderType::Rounded)
-                .title(coin.gray().into_centered_line()),
-            area,
-        ); */
-
         // add filtering for coins
 
         let tmp_data = fff
@@ -216,13 +302,15 @@ impl App {
                 convert_timestamp_to_locale(now + t_changee).white(),
             ]);
 
+        let price_1per = price / 100.0;
+
         // PRICE AXIS
         let y_axis = Axis::default()
-            .bounds([price - p_changee, price + p_changee])
+            .bounds([price_1per * 99.0, price_1per * 101.0])
             .labels([
-                format!("{:.2}", price - p_changee).red(),
+                format!("{:.2}", price_1per * 98.0).red(),
                 price.to_string().white(),
-                format!("{:.2}", price + p_changee).green(),
+                format!("{:.2}", price_1per * 102.0).green(),
             ])
             .style(Color::White);
 
@@ -240,7 +328,7 @@ impl App {
             Color::Rgb(255, 0, 100)
         };
 
-        let title = format!("{} - {}", coin, convert_timestamp_to_locale(now));
+        let title = format!("{} - {} - {}", coin, convert_timestamp_to_locale(now), fff.lock().len());
 
         let chart = Chart::new(vec![
             Dataset::default()
@@ -251,7 +339,12 @@ impl App {
         .x_axis(x_axis)
         .y_axis(y_axis);
 
-        let widget = GradientWrapper::new(chart).title(title);
+        let widget = GradientWrapper::new(chart).title(title).gradient_colors(
+            CRYPTO_COLOR_CODES
+                .get(&coin)
+                .unwrap_or(&GradientConfig::default())
+                .clone(),
+        );
         frame.render_widget(widget, area);
     }
 
