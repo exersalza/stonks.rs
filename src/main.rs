@@ -17,6 +17,10 @@ pub mod app;
 pub mod events;
 pub mod ui;
 
+
+/// Widgets
+pub mod gradient_widget;
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     let opts = CliOpts::parse();

@@ -17,7 +17,7 @@ lazy_static::lazy_static! {
 }
 
 crate::pub_fields! {
-    #[derive(Debug, Clone, Deserialize, Serialize)]
+    #[derive(Debug, Clone, Deserialize, Serialize, Default)]
     struct WsMessage {
         /// The type of the message
         r#type: String,
@@ -26,7 +26,7 @@ crate::pub_fields! {
         /// The product that this message comes from
         product_id: String,
         /// The current Price
-        price: f64,
+        price: String,
 
         open_24h: String,
         /// The total trading volume in the past 24 hours
