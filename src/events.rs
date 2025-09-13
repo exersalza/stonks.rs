@@ -22,6 +22,10 @@ pub enum Event {
 pub enum AppEvent {
     /// New message from websocket
     WSMessage(WsMessage),
+    /// Inc the multiplier thats applied on the price
+    IncMult(bool),
+    /// Dec the multiplier thats applied on the price
+    DecMult(bool),
     /// Quit the application.
     Quit,
 }

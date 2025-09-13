@@ -6,6 +6,7 @@ use std::{
 use crate::{
     events::{AppEvent, Event, EventHandler},
     gradient_widget::{GradientConfig, GradientWrapper},
+    memes::{MEMES, XorShift32},
     sockets::{WsMessage, fff},
 };
 
@@ -14,11 +15,11 @@ use lazy_static::lazy_static;
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    layout::{Constraint, Layout, Rect},
+    layout::{self, Constraint, Layout, Rect},
     style::{Color, Style, Styled, Stylize},
     symbols,
-    text::{Text, ToLine},
-    widgets::{Axis, Block, Borders, Chart, Dataset},
+    text::{Line, Span, Text, ToLine},
+    widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, Paragraph},
 };
 use ringbuffer::RingBuffer;
 
@@ -53,25 +54,23 @@ fn convert_timestamp_to_locale(ts: f64) -> String {
     local.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
-fn hilo(data: &Vec<WsMessage>) -> (f64, f64) {
-    let mut hi = 0.0;
-    let mut lo = 0.0;
 
-    // wtf
-    for ele in data {
-        let l_hi = ele.high_24h.parse::<f64>().unwrap_or(0.0);
-        let l_lo = ele.low_24h.parse::<f64>().unwrap_or(0.0);
+const BODY_MIN_H: i32 = 10;
+const BODY_MIN_W: i32 = 46;
 
-        if l_hi > hi {
-            hi = l_hi;
-        }
 
-        if l_lo > lo {
-            lo = l_lo;
-        }
-    }
+pub enum WindowType {
+    Master,
+    Splace,
+}
 
-    (hi, lo)
+fn calc_body_layout(frame: &mut Frame, area: Rect, amount: usize, window_type: WindowType) -> Vec<Rect> {
+    let mut horizontals = 0;
+    let mut verticals = 0;
+
+
+    
+    vec![]
 }
 
 /// Application.
@@ -95,18 +94,21 @@ pub struct App {
     color: u8,
     /// this decides if we add or subtract
     color_add: bool,
+
+    price_mult: f64,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            watching: vec!["SOL-USDC".to_string()],
+            watching: vec!["SOL-USD".to_string()],
             running: true,
             events: EventHandler::new(),
             start_time: Self::now(),
             border_animation: true,
             color: 255,
             color_add: false,
+            price_mult: 1.0,
         }
     }
 }
@@ -132,6 +134,17 @@ impl App {
 
     /// Run the application's main loop.
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
+        let mut rng = XorShift32::new(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time went backwards")
+                .as_secs(),
+        );
+
+        let (top_text, bottom_text) = MEMES
+            .get(rng.gen_range(MEMES.len() as usize) as usize)
+            .unwrap_or(&("hellol", "byel"));
+
         while self.running {
             terminal.draw(|frame| {
                 if self.watching.len() == 0 {
@@ -141,107 +154,19 @@ impl App {
                     );
                     return;
                 }
-                // TODO: add layouts for differente screen sizes and for the amount of chains to
+                // TODO: add layouts for different screen sizes and for the amount of chains to
                 // watch
+                let [top, body, bottom] = Layout::vertical([
+                    Constraint::Length(1),
+                    Constraint::Fill(1),
+                    Constraint::Length(1),
+                ])
+                .areas(frame.area());
 
-                let t_changee = 60000.0;
-                let p_changee = 1.0;
+                frame.render_widget(Line::from(*top_text).centered(), top);
+                frame.render_widget(Line::from(*bottom_text).centered(), bottom);
 
-                match self.watching.len() {
-                    1 => {
-                        self.render_chart(
-                            frame,
-                            frame.area(),
-                            self.watching[0].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                        return;
-                    }
-                    2 => {
-                        let [top, bottom] =
-                            Layout::vertical([Constraint::Fill(1); 2]).areas(frame.area());
-                        self.render_chart(
-                            frame,
-                            top,
-                            self.watching[0].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                        self.render_chart(
-                            frame,
-                            bottom,
-                            self.watching[1].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                    }
-                    3 => {
-                        let [left, right] =
-                            Layout::horizontal([Constraint::Fill(1); 2]).areas(frame.area());
-                        let [top, bottom] = Layout::vertical([Constraint::Fill(1); 2]).areas(left);
-
-                        self.render_chart(
-                            frame,
-                            top,
-                            self.watching[0].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                        self.render_chart(
-                            frame,
-                            bottom,
-                            self.watching[1].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                        self.render_chart(
-                            frame,
-                            right,
-                            self.watching[2].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                    }
-                    4 => {
-                        let [left, right] =
-                            Layout::horizontal([Constraint::Fill(1); 2]).areas(frame.area());
-                        let [l_top, l_bottom] =
-                            Layout::vertical([Constraint::Fill(1); 2]).areas(left);
-                        let [r_top, r_bottom] =
-                            Layout::vertical([Constraint::Fill(1); 2]).areas(right);
-
-                        self.render_chart(
-                            frame,
-                            l_top,
-                            self.watching[0].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                        self.render_chart(
-                            frame,
-                            l_bottom,
-                            self.watching[1].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                        self.render_chart(
-                            frame,
-                            r_top,
-                            self.watching[2].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                        self.render_chart(
-                            frame,
-                            r_bottom,
-                            self.watching[3].clone(),
-                            t_changee,
-                            p_changee,
-                        );
-                    }
-                    _ => {}
-                }
+                let body_layout = calc_body_layout(frame, body, self.watching.len(), WindowType::Master);
             })?;
 
             match self.events.next().await? {
@@ -252,7 +177,20 @@ impl App {
                 },
                 Event::App(app_event) => match app_event {
                     AppEvent::Quit => self.quit(),
-                    AppEvent::WSMessage(m) => {}
+                    AppEvent::IncMult(fine) => {
+                        if fine {
+                            self.price_mult += 0.01;
+                        } else {
+                            self.price_mult += 0.1;
+                        }
+                    }
+                    AppEvent::DecMult(fine) => {
+                        if fine {
+                            self.price_mult -= 0.01;
+                        } else {
+                            self.price_mult -= 0.1;
+                        }
+                    }
                     _ => {}
                 },
             }
@@ -260,14 +198,7 @@ impl App {
         Ok(())
     }
 
-    fn render_chart(
-        &self,
-        frame: &mut Frame,
-        area: Rect,
-        coin: String,
-        t_changee: f64,
-        p_changee: f64,
-    ) {
+    fn render_chart(&self, frame: &mut Frame, area: Rect, coin: String, t_changee: f64) {
         // add filtering for coins
 
         let tmp_data = fff
@@ -299,18 +230,21 @@ impl App {
             .bounds([now - t_changee * 5.0, now + t_changee])
             .labels([
                 convert_timestamp_to_locale(now - t_changee * 5.0).white(),
+                convert_timestamp_to_locale(now).white(),
                 convert_timestamp_to_locale(now + t_changee).white(),
             ]);
 
         let price_1per = price / 100.0;
+        let hi = price_1per * (100.0 + self.price_mult);
+        let lo = price_1per * (100.0 - self.price_mult);
 
         // PRICE AXIS
         let y_axis = Axis::default()
-            .bounds([price_1per * 99.0, price_1per * 101.0])
+            .bounds([lo, hi])
             .labels([
-                format!("{:.2}", price_1per * 98.0).red(),
+                format!("{:.2}", lo).red(),
                 price.to_string().white(),
-                format!("{:.2}", price_1per * 102.0).green(),
+                format!("{:.2}", hi).green(),
             ])
             .style(Color::White);
 
@@ -328,7 +262,7 @@ impl App {
             Color::Rgb(255, 0, 100)
         };
 
-        let title = format!("{} - {} - {}", coin, convert_timestamp_to_locale(now), fff.lock().len());
+        let title = format!("{} - {} - {}", coin, 1, fff.lock().len());
 
         let chart = Chart::new(vec![
             Dataset::default()
@@ -355,6 +289,12 @@ impl App {
             KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.events.send(AppEvent::Quit)
             }
+            KeyCode::Up => self.events.send(AppEvent::IncMult(
+                key_event.modifiers == KeyModifiers::SHIFT,
+            )),
+            KeyCode::Down => self.events.send(AppEvent::DecMult(
+                key_event.modifiers == KeyModifiers::SHIFT,
+            )),
             // Other handlers you could add here.
             _ => {}
         }

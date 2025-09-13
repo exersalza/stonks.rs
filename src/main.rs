@@ -16,6 +16,7 @@ pub mod macros;
 pub mod app;
 pub mod events;
 pub mod ui;
+pub mod memes;
 
 
 /// Widgets
