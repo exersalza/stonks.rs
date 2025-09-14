@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
+    fmt::Display,
     time::{Duration, SystemTime, UNIX_EPOCH},
+    usize,
 };
 
 use crate::{
@@ -11,6 +13,7 @@ use crate::{
 };
 
 use chrono::{DateTime, Local, TimeZone, Utc};
+use futures::stream::Unzip;
 use lazy_static::lazy_static;
 use ratatui::{
     DefaultTerminal, Frame,
@@ -54,22 +57,24 @@ fn convert_timestamp_to_locale(ts: f64) -> String {
     local.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
-
 const BODY_MIN_H: i32 = 10;
 const BODY_MIN_W: i32 = 46;
-
 
 pub enum WindowType {
     Master,
     Splace,
 }
 
-fn calc_body_layout(frame: &mut Frame, area: Rect, amount: usize, window_type: WindowType) -> Vec<Rect> {
+fn calc_body_layout(
+    frame: &mut Frame,
+    area: Rect,
+    amount: usize,
+    window_type: WindowType,
+) -> Vec<Rect> {
     let mut horizontals = 0;
     let mut verticals = 0;
 
 
-    
     vec![]
 }
 
@@ -95,7 +100,11 @@ pub struct App {
     /// this decides if we add or subtract
     color_add: bool,
 
-    price_mult: f64,
+    /// Price mulitplier
+    price_mult: HashMap<String, f64>,
+
+    /// The current selected chart/ window
+    active_window: i32,
 }
 
 impl Default for App {
@@ -108,7 +117,8 @@ impl Default for App {
             border_animation: true,
             color: 255,
             color_add: false,
-            price_mult: 1.0,
+            price_mult: HashMap::from([("SOL-USD".to_string(), 0.5)]),
+            active_window: 0,
         }
     }
 }
@@ -130,6 +140,20 @@ impl App {
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards???")
             .as_secs()
+    }
+
+    fn get_coin_mult<T: Display>(&self, coin: T) -> f64 {
+        self.price_mult
+            .get(&coin.to_string())
+            .unwrap_or(&1.0)
+            .clone()
+    }
+
+    fn get_coin_mult_mut<T: Display>(&mut self, coin: T) -> &mut f64 {
+        // We can unwrap here, as there should always be the coin gettable when we call this. This
+        // should be gurranteed as we dont remove anything anywhere, if it breaks i gotta come back
+        // tho
+        self.price_mult.get_mut(&coin.to_string()).unwrap()
     }
 
     /// Run the application's main loop.
@@ -166,7 +190,8 @@ impl App {
                 frame.render_widget(Line::from(*top_text).centered(), top);
                 frame.render_widget(Line::from(*bottom_text).centered(), bottom);
 
-                let body_layout = calc_body_layout(frame, body, self.watching.len(), WindowType::Master);
+                let body_layout =
+                    calc_body_layout(frame, body, self.watching.len(), WindowType::Master);
             })?;
 
             match self.events.next().await? {
@@ -178,17 +203,21 @@ impl App {
                 Event::App(app_event) => match app_event {
                     AppEvent::Quit => self.quit(),
                     AppEvent::IncMult(fine) => {
+                        let v = self
+                            .get_coin_mult_mut(self.watching[self.active_window as usize].clone());
                         if fine {
-                            self.price_mult += 0.01;
+                            *v += 0.01;
                         } else {
-                            self.price_mult += 0.1;
+                            *v += 0.1;
                         }
                     }
                     AppEvent::DecMult(fine) => {
+                        let v = self
+                            .get_coin_mult_mut(self.watching[self.active_window as usize].clone());
                         if fine {
-                            self.price_mult -= 0.01;
+                            *v -= 0.01;
                         } else {
-                            self.price_mult -= 0.1;
+                            *v -= 0.1;
                         }
                     }
                     _ => {}
@@ -235,8 +264,8 @@ impl App {
             ]);
 
         let price_1per = price / 100.0;
-        let hi = price_1per * (100.0 + self.price_mult);
-        let lo = price_1per * (100.0 - self.price_mult);
+        let hi = price_1per * (100.0 + self.price_mult[&coin]);
+        let lo = price_1per * (100.0 - self.price_mult[&coin]);
 
         // PRICE AXIS
         let y_axis = Axis::default()
@@ -284,18 +313,15 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     pub fn handle_key_events(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
+        let is_shift = key_event.modifiers == KeyModifiers::SHIFT;
+        let is_ctrl = key_event.modifiers == KeyModifiers::CONTROL;
+        let is_alt = key_event.modifiers == KeyModifiers::ALT;
+
         match key_event.code {
             KeyCode::Esc | KeyCode::Char('q') => self.events.send(AppEvent::Quit),
-            KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
-                self.events.send(AppEvent::Quit)
-            }
-            KeyCode::Up => self.events.send(AppEvent::IncMult(
-                key_event.modifiers == KeyModifiers::SHIFT,
-            )),
-            KeyCode::Down => self.events.send(AppEvent::DecMult(
-                key_event.modifiers == KeyModifiers::SHIFT,
-            )),
-            // Other handlers you could add here.
+            KeyCode::Char('c' | 'C') if is_ctrl => self.events.send(AppEvent::Quit),
+            KeyCode::Up => self.events.send(AppEvent::IncMult(is_shift)),
+            KeyCode::Down => self.events.send(AppEvent::DecMult(is_shift)),
             _ => {}
         }
         Ok(())
