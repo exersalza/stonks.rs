@@ -70,12 +70,15 @@ fn calc_body_layout(
     area: Rect,
     amount: usize,
     window_type: WindowType,
-) -> Vec<Rect> {
+) -> Layout {
     let mut horizontals = 0;
     let mut verticals = 0;
 
+    if amount == 1 {
+        return Layout::vertical([Constraint::Fill(0)]);
+    }
 
-    vec![]
+    Layout::vertical([Constraint::Fill(0)])
 }
 
 /// Application.
@@ -190,8 +193,10 @@ impl App {
                 frame.render_widget(Line::from(*top_text).centered(), top);
                 frame.render_widget(Line::from(*bottom_text).centered(), bottom);
 
-                let body_layout =
-                    calc_body_layout(frame, body, self.watching.len(), WindowType::Master);
+                let [fbody] = calc_body_layout(frame, body, self.watching.len(), WindowType::Master)
+                    .areas(frame.area());
+
+                self.render_chart(frame, fbody, self.watching[0].clone(), 60000.0);
             })?;
 
             match self.events.next().await? {
