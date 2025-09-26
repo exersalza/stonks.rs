@@ -13,8 +13,11 @@ use tokio_tungstenite::{
 
 use crate::{opts::CliOpts, utils::FEED_WS_URL};
 
+
+// TODO: alloc 5k for each coin
 lazy_static::lazy_static! {
-    pub static ref fff: Arc<Mutex<AllocRingBuffer<WsMessage>>> = Arc::new(Mutex::new(AllocRingBuffer::new(CliOpts::parse().watching.len() * 5000)));
+    pub static ref fff: Arc<Mutex<AllocRingBuffer<WsMessage>>> =
+                Arc::new(Mutex::new(AllocRingBuffer::new(CliOpts::parse().watching.len() * 10000)));
 }
 
 crate::pub_fields! {

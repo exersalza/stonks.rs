@@ -71,14 +71,15 @@ fn calc_body_layout(
     amount: usize,
     window_type: WindowType,
 ) -> Layout {
-    let mut horizontals = 0;
-    let mut verticals = 0;
-
     if amount == 1 {
-        return Layout::vertical([Constraint::Fill(0)]);
+        return Layout::vertical([Constraint::Percentage(100)]);
     }
 
-    Layout::vertical([Constraint::Fill(0)])
+    let w_con = (area.width as f32 / BODY_MIN_W as f32).floor();
+    let h_con = 0;
+
+
+    Layout::vertical([Constraint::Percentage(100)])
 }
 
 /// Application.
@@ -193,8 +194,9 @@ impl App {
                 frame.render_widget(Line::from(*top_text).centered(), top);
                 frame.render_widget(Line::from(*bottom_text).centered(), bottom);
 
-                let [fbody] = calc_body_layout(frame, body, self.watching.len(), WindowType::Master)
-                    .areas(frame.area());
+                let [fbody] =
+                    calc_body_layout(frame, body, self.watching.len(), WindowType::Master)
+                        .areas(frame.area());
 
                 self.render_chart(frame, fbody, self.watching[0].clone(), 60000.0);
             })?;
@@ -258,21 +260,21 @@ impl App {
         let last = data.last().unwrap_or(&(0.0, 0.0));
         let price = last.1;
 
-        // TIME AXIS
+        //                                                                  TIME AXIS
         let x_axis = Axis::default()
             .style(Color::White)
             .bounds([now - t_changee * 5.0, now + t_changee])
             .labels([
                 convert_timestamp_to_locale(now - t_changee * 5.0).white(),
-                convert_timestamp_to_locale(now).white(),
                 convert_timestamp_to_locale(now + t_changee).white(),
             ]);
 
         let price_1per = price / 100.0;
+
         let hi = price_1per * (100.0 + self.price_mult[&coin]);
         let lo = price_1per * (100.0 - self.price_mult[&coin]);
 
-        // PRICE AXIS
+        //                                                                  PRICE AXIS
         let y_axis = Axis::default()
             .bounds([lo, hi])
             .labels([
