@@ -73,6 +73,33 @@ impl GradientConfig {
             left_end,
         }
     }
+
+    pub fn new_1(c: Color) -> Self {
+        Self {
+            top_start: c,
+            top_end: c,
+            right_start: c,
+            right_end: c,
+            bottom_start: c,
+            bottom_end: c,
+            left_start: c,
+            left_end: c,
+        }
+    }
+
+    pub fn new_4(top_l: Color, top_r: Color, bot_r: Color, bot_l: Color) -> Self {
+        Self {
+            top_start: top_l,
+            top_end: top_r,
+            right_start: top_r,
+            right_end: bot_r,
+            bottom_start: bot_r,
+            bottom_end: bot_l,
+            left_start: bot_l,
+            left_end: top_l,
+        }
+    }
+
 }
 
 /// Wrapper that renders any widget with a customizable gradient border
@@ -84,7 +111,7 @@ impl GradientConfig {
 ///
 /// ```
 /// use ratatui::widgets::{Chart, Dataset};
-/// use your_module::{GradientWrapper, GradientConfig};
+/// use crate::{GradientWrapper, GradientConfig};
 ///
 /// let chart = Chart::new(datasets).x_axis(x_axis).y_axis(y_axis);
 /// let gradient_chart = GradientWrapper::new(chart)

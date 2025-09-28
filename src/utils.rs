@@ -4,3 +4,4 @@ pub fn rotate_string(i:&mut String) -> String {
     // might aswell unwrap bc we know there has to be something inside the string
     format!("{}{}", i.pop().unwrap(), i)
 }
+

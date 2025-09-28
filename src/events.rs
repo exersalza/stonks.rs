@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use crate::sockets::WsMessage;
 
-pub const TICK_RATE: u64 = 1000;
+pub const TICK_RATE: u64 = 1000 / 30;
 
 #[derive(Clone, Debug)]
 pub enum Event {

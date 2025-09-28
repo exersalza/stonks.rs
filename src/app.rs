@@ -1,7 +1,8 @@
 use std::{
     collections::HashMap,
     fmt::Display,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
     usize,
 };
 
@@ -13,16 +14,15 @@ use crate::{
 };
 
 use chrono::{DateTime, Local, TimeZone, Utc};
-use futures::stream::Unzip;
 use lazy_static::lazy_static;
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    layout::{self, Constraint, Layout, Rect},
-    style::{Color, Style, Styled, Stylize},
+    layout::{Constraint, Layout, Rect},
+    style::{Color, Stylize},
     symbols,
-    text::{Line, Span, Text, ToLine},
-    widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, Paragraph},
+    text::{Line, Text},
+    widgets::{Axis, Chart, Dataset},
 };
 use ringbuffer::RingBuffer;
 
@@ -36,17 +36,17 @@ pub const CHANGE_COLOR_BY: u8 = 5;
 lazy_static! {
     pub static ref CRYPTO_COLOR_CODES: HashMap<String, GradientConfig> = HashMap::from([(
         "SOL-USD".to_string(),
-        GradientConfig::new(
+        GradientConfig::new_4(
             Color::Rgb(154, 69, 254), // PURUPLE
             Color::Rgb(87, 152, 203), // PURPLE - GREEN
-            Color::Rgb(87, 152, 203), // PURPLE - GREEN
-            Color::Rgb(21, 240, 150), // GREEN
             Color::Rgb(21, 240, 150), // GREEN
             Color::Rgb(87, 152, 203), // PURPLE - GREEN
-            Color::Rgb(87, 152, 203), // PURPLE - GREEN
-            Color::Rgb(154, 69, 254), // PURUPLE
         )
-    ),]);
+    ),(
+            "BTC-USD".to_string(),
+            GradientConfig::new_1(Color::Rgb(247, 147, 26))
+        )]);
+    static ref WATCHING_AMOUNT: Arc<i32> = Arc::new(0);
 }
 
 fn convert_timestamp_to_locale(ts: f64) -> String {
@@ -65,21 +65,24 @@ pub enum WindowType {
     Splace,
 }
 
-fn calc_body_layout(
-    frame: &mut Frame,
-    area: Rect,
-    amount: usize,
-    window_type: WindowType,
-) -> Layout {
+fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Layout {
     if amount == 1 {
         return Layout::vertical([Constraint::Percentage(100)]);
     }
 
-    let w_con = (area.width as f32 / BODY_MIN_W as f32).floor();
-    let h_con = 0;
+    match window_type {
+        // WindowType::Master => todo!(),
+        WindowType::Splace => {
+            // flooring here so we can get the max fitable without any rendering problems
+            let w_con = (area.width as f32 / BODY_MIN_W as f32).floor();
+            let h_con = (area.height as f32 / BODY_MIN_H as f32).floor();
 
+            let main_verti = Layout::vertical(vec![Constraint::Fill(1); w_con as usize]);
 
-    Layout::vertical([Constraint::Percentage(100)])
+            main_verti
+        }
+        _ => Layout::vertical([Constraint::Percentage(100)]),
+    }
 }
 
 /// Application.
@@ -131,10 +134,18 @@ impl App {
     /// Constructs a new instance of [`App`].
     pub fn new(watching: Option<Vec<String>>) -> Self {
         match watching {
-            Some(v) => Self {
-                watching: v,
-                ..Default::default()
-            },
+            Some(v) => {
+                let prepd = v
+                    .iter()
+                    .map(|f| (f.to_owned(), 0.5f64))
+                    .collect::<Vec<(String, f64)>>();
+
+                Self {
+                    watching: v,
+                    price_mult: prepd.into_iter().collect(),
+                    ..Default::default()
+                }
+            }
             _ => Self::default(),
         }
     }
@@ -194,11 +205,14 @@ impl App {
                 frame.render_widget(Line::from(*top_text).centered(), top);
                 frame.render_widget(Line::from(*bottom_text).centered(), bottom);
 
-                let [fbody] =
-                    calc_body_layout(frame, body, self.watching.len(), WindowType::Master)
-                        .areas(frame.area());
+                let layhout: Vec<Rect> =
+                    calc_body_layout(body, self.watching.len(), WindowType::Splace)
+                        .split(body)
+                        .to_vec();
 
-                self.render_chart(frame, fbody, self.watching[0].clone(), 60000.0);
+                for (i, v) in layhout.iter().enumerate() {
+                    self.render_chart(frame, v.to_owned(), self.watching[i].clone(), 60000.0);
+                }
             })?;
 
             match self.events.next().await? {
@@ -271,16 +285,24 @@ impl App {
 
         let price_1per = price / 100.0;
 
-        let hi = price_1per * (100.0 + self.price_mult[&coin]);
-        let lo = price_1per * (100.0 - self.price_mult[&coin]);
+        let hi = price_1per * (100.0 + self.get_coin_mult(&coin));
+        let lo = price_1per * (100.0 - self.get_coin_mult(&coin));
+
+        /* let (hi, lo) = match tmp_data.last() {
+            Some(v) => (
+                v.high_24h.parse::<f64>().unwrap_or(0.0),
+                v.low_24h.parse::<f64>().unwrap_or(0.0),
+            ),
+            None => return,
+        }; */
 
         //                                                                  PRICE AXIS
         let y_axis = Axis::default()
             .bounds([lo, hi])
             .labels([
-                format!("{:.2}", lo).red(),
+                format!("{:.2}{:.2}", lo, lo - price).red(),
                 price.to_string().white(),
-                format!("{:.2}", hi).green(),
+                format!("{:.2}+{:.2}", hi, hi - price).green(),
             ])
             .style(Color::White);
 
