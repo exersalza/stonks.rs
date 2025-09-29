@@ -1,9 +1,9 @@
-use std::{collections::VecDeque, sync::Arc, thread, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use parking_lot::Mutex;
-use ringbuffer::{AllocRingBuffer, ConstGenericRingBuffer, RingBuffer};
+use ringbuffer::{AllocRingBuffer, RingBuffer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_tungstenite::{
@@ -13,11 +13,10 @@ use tokio_tungstenite::{
 
 use crate::{opts::CliOpts, utils::FEED_WS_URL};
 
-
 // TODO: alloc 5k for each coin
 lazy_static::lazy_static! {
-    pub static ref fff: Arc<Mutex<AllocRingBuffer<WsMessage>>> =
-                Arc::new(Mutex::new(AllocRingBuffer::new(CliOpts::parse().watching.len() * 10000)));
+    pub static ref ws_messages: Arc<Mutex<HashMap<String, AllocRingBuffer<WsMessage>>>> =
+                Arc::new(Mutex::new(HashMap::new()));
 }
 
 crate::pub_fields! {
@@ -95,9 +94,19 @@ impl BaseSocket {
 
     async fn handle_message(m: Utf8Bytes) -> anyhow::Result<()> {
         let msg = m.as_str();
-
         let p_msg: WsMessage = serde_json::from_str(msg)?;
-        fff.lock().enqueue(p_msg);
+
+        let mut l = ws_messages.lock();
+
+        if !l.contains_key(&p_msg.product_id) {
+            l.insert(
+                p_msg.product_id,
+                AllocRingBuffer::new(CliOpts::parse().watching.len() * 10000),
+            );
+            return Ok(());
+        }
+
+        l.get_mut(&p_msg.product_id).unwrap().enqueue(p_msg);
 
         Ok(())
     }

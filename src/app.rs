@@ -10,7 +10,7 @@ use crate::{
     events::{AppEvent, Event, EventHandler},
     gradient_widget::{GradientConfig, GradientWrapper},
     memes::{MEMES, XorShift32},
-    sockets::{WsMessage, fff},
+    sockets::{WsMessage, ws_messages},
 };
 
 use chrono::{DateTime, Local, TimeZone, Utc};
@@ -22,7 +22,7 @@ use ratatui::{
     style::{Color, Stylize},
     symbols,
     text::{Line, Text},
-    widgets::{Axis, Chart, Dataset},
+    widgets::{Axis, Chart, Dataset, Paragraph},
 };
 use ringbuffer::RingBuffer;
 
@@ -43,9 +43,13 @@ lazy_static! {
             Color::Rgb(87, 152, 203), // PURPLE - GREEN
         )
     ),(
-            "BTC-USD".to_string(),
-            GradientConfig::new_1(Color::Rgb(247, 147, 26))
-        )]);
+        "BTC-USD".to_string(),
+        GradientConfig::new_1(Color::Rgb(247, 147, 26))
+    ),(
+        "ETH-USD".to_string(),
+        GradientConfig::new_1(Color::Rgb(72, 203, 217))
+    )
+    ]);
     static ref WATCHING_AMOUNT: Arc<i32> = Arc::new(0);
 }
 
@@ -65,23 +69,57 @@ pub enum WindowType {
     Splace,
 }
 
-fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Layout {
+fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<Rect> {
     if amount == 1 {
-        return Layout::vertical([Constraint::Percentage(100)]);
+        return Layout::vertical([Constraint::Percentage(100)])
+            .areas::<1>(area)
+            .to_vec();
     }
 
     match window_type {
         // WindowType::Master => todo!(),
         WindowType::Splace => {
             // flooring here so we can get the max fitable without any rendering problems
-            let w_con = (area.width as f32 / BODY_MIN_W as f32).floor();
-            let h_con = (area.height as f32 / BODY_MIN_H as f32).floor();
+            let w_max = (area.width as f32 / BODY_MIN_W as f32)
+                .floor()
+                .min(amount as f32);
+            let h_max = ((area.height as f32 / BODY_MIN_H as f32).floor()).min(amount as f32);
 
-            let main_verti = Layout::vertical(vec![Constraint::Fill(1); w_con as usize]);
+            let can_fit = h_max * w_max;
 
-            main_verti
+            let w_act = (can_fit / 2.0 / amount as f32).floor();
+            let h_act = (amount as f32 - w_act) + if amount % 2 == 0 { 1. } else { 0. };
+
+            let mut filled_spots = 0;
+
+            let mut ret_rects = vec![];
+
+            let main_verti =
+                Layout::vertical(vec![Constraint::Fill(1); h_act as usize]).split(area);
+
+            for i in main_verti.iter() {
+                if amount - filled_spots == 1 {
+                    ret_rects.push(
+                        Layout::horizontal(vec![Constraint::Fill(1)])
+                            .split(*i)
+                            .to_vec(),
+                    );
+                    continue;
+                }
+
+                ret_rects.push(
+                    Layout::horizontal(vec![Constraint::Fill(1); w_act as usize])
+                        .split(*i)
+                        .to_vec(),
+                );
+                filled_spots += w_act as usize;
+            }
+
+            ret_rects.iter().map(|i| i.to_owned()).flatten().collect()
         }
-        _ => Layout::vertical([Constraint::Percentage(100)]),
+        _ => Layout::vertical([Constraint::Percentage(100)])
+            .areas::<1>(area)
+            .to_vec(),
     }
 }
 
@@ -196,21 +234,25 @@ impl App {
                 // TODO: add layouts for different screen sizes and for the amount of chains to
                 // watch
                 let [top, body, bottom] = Layout::vertical([
-                    Constraint::Length(1),
+                    Constraint::Length(2),
                     Constraint::Fill(1),
                     Constraint::Length(1),
                 ])
                 .areas(frame.area());
 
-                frame.render_widget(Line::from(*top_text).centered(), top);
+                let now =
+                    convert_timestamp_to_locale(chrono::Local::now().timestamp_millis() as f64);
+
+                frame.render_widget(
+                    Paragraph::new(format!("{top_text}\n{}", now)).centered(),
+                    top,
+                );
                 frame.render_widget(Line::from(*bottom_text).centered(), bottom);
 
-                let layhout: Vec<Rect> =
-                    calc_body_layout(body, self.watching.len(), WindowType::Splace)
-                        .split(body)
-                        .to_vec();
+                let layout: Vec<Rect> =
+                    calc_body_layout(body, self.watching.len(), WindowType::Splace);
 
-                for (i, v) in layhout.iter().enumerate() {
+                for (i, v) in layout.iter().enumerate() {
                     self.render_chart(frame, v.to_owned(), self.watching[i].clone(), 60000.0);
                 }
             })?;
@@ -251,13 +293,14 @@ impl App {
     fn render_chart(&self, frame: &mut Frame, area: Rect, coin: String, t_changee: f64) {
         // add filtering for coins
 
-        let tmp_data = fff
-            .lock()
-            .clone()
-            .iter()
-            .filter(|f| f.product_id == coin)
-            .map(|f| f.to_owned())
-            .collect::<Vec<WsMessage>>();
+        let tmp_data = match ws_messages.lock().clone().get(&coin) {
+            Some(v) => v
+                .iter()
+                .filter(|f| f.product_id == coin)
+                .map(|f| f.to_owned())
+                .collect::<Vec<WsMessage>>(),
+            None => return,
+        };
 
         let data = tmp_data
             .iter()
@@ -320,7 +363,7 @@ impl App {
             Color::Rgb(255, 0, 100)
         };
 
-        let title = format!("{} - {} - {}", coin, 1, fff.lock().len());
+        let title = format!("{} - {}", coin, tmp_data.len());
 
         let chart = Chart::new(vec![
             Dataset::default()
@@ -361,7 +404,7 @@ impl App {
     /// The tick event is where you can update the state of your application with any logic that
     /// needs to be updated at a fixed frame rate. E.g. polling a server, updating an animation.
     pub fn tick(&mut self) {
-        let lock = fff.lock();
+        let lock = ws_messages.lock();
         self.calc_color();
     }
 
