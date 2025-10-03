@@ -9,7 +9,8 @@ use tokio::sync::mpsc;
 
 use crate::sockets::WsMessage;
 
-pub const TICK_RATE: u64 = 1000 / 30;
+// ok for some reason i cant figure out, when we have it on 30fps, it stops users from inputing
+pub const TICK_RATE: u64 = 500;
 
 #[derive(Clone, Debug)]
 pub enum Event {
@@ -103,15 +104,15 @@ impl EventTask {
         loop {
             let crossterm_event = reader.next().fuse();
             tokio::select! {
-              _ = self.sender.closed() => {
-                break;
-              }
-              _ = tick.tick() => {
-                  self.send(Event::Tick);
-              }
-              Some(Ok(evt)) = crossterm_event => {
-                self.send(Event::Crossterm(evt));
-              }
+                Some(Ok(evt)) = crossterm_event => {
+                    self.send(Event::Crossterm(evt));
+                }
+                _ = self.sender.closed() => {
+                    break;
+                }
+                _ = tick.tick() => {
+                    self.send(Event::Tick);
+                }
             };
         }
         Ok(())

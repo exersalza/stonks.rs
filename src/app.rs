@@ -11,6 +11,7 @@ use crate::{
     gradient_widget::{GradientConfig, GradientWrapper},
     memes::{MEMES, XorShift32},
     sockets::{WsMessage, ws_messages},
+    utils::CURRENCIES,
 };
 
 use chrono::{DateTime, Local, TimeZone, Utc};
@@ -18,7 +19,7 @@ use lazy_static::lazy_static;
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    layout::{Constraint, Layout, Rect},
+    layout::{self, Constraint, Layout, Rect},
     style::{Color, Stylize},
     symbols,
     text::{Line, Text},
@@ -87,18 +88,26 @@ fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<R
 
             let can_fit = h_max * w_max;
 
-            let w_act = (can_fit / 2.0 / amount as f32).floor();
-            let h_act = (amount as f32 - w_act) + if amount % 2 == 0 { 1. } else { 0. };
+            // check if we can have an equal amount on the horizontal and vertical
+            let [w_act, h_act] = if (amount as f64).sqrt() == (amount as f64).sqrt().floor() {
+                [(amount as f64).sqrt(); 2]
 
-            let mut filled_spots = 0;
+            // else do some other math i dont understand anymore
+            } else {
+                let w_act = (w_max - amount as f32 + amount as f32).floor();
+                let h_act = (amount as f32 / w_act).ceil();
 
+                [w_act as f64, h_act as f64]
+            };
+
+            let mut filled_spots = 0.0;
             let mut ret_rects = vec![];
 
             let main_verti =
                 Layout::vertical(vec![Constraint::Fill(1); h_act as usize]).split(area);
 
             for i in main_verti.iter() {
-                if amount - filled_spots == 1 {
+                if (amount as f64) - filled_spots == 1.0 {
                     ret_rects.push(
                         Layout::horizontal(vec![Constraint::Fill(1)])
                             .split(*i)
@@ -112,10 +121,16 @@ fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<R
                         .split(*i)
                         .to_vec(),
                 );
-                filled_spots += w_act as usize;
+                filled_spots += w_act;
             }
 
             ret_rects.iter().map(|i| i.to_owned()).flatten().collect()
+        }
+        WindowType::Master => {
+            let [left, right] =
+                Layout::horizontal([Constraint::Fill(2), Constraint::Fill(1)]).areas(area);
+
+            vec![left, right]
         }
         _ => Layout::vertical([Constraint::Percentage(100)])
             .areas::<1>(area)
@@ -253,6 +268,9 @@ impl App {
                     calc_body_layout(body, self.watching.len(), WindowType::Splace);
 
                 for (i, v) in layout.iter().enumerate() {
+                    if i >= self.watching.len() {
+                        continue;
+                    }
                     self.render_chart(frame, v.to_owned(), self.watching[i].clone(), 60000.0);
                 }
             })?;
@@ -339,13 +357,18 @@ impl App {
             None => return,
         }; */
 
+        let crc = match coin.split('-').collect::<Vec<&str>>()[1] {
+            "EUR" => CURRENCIES[1],
+            _ => CURRENCIES[0], // default to $
+        };
+
         //                                                                  PRICE AXIS
         let y_axis = Axis::default()
             .bounds([lo, hi])
             .labels([
-                format!("{:.2}{:.2}", lo, lo - price).red(),
-                price.to_string().white(),
-                format!("{:.2}+{:.2}", hi, hi - price).green(),
+                format!("{crc}{:.2}{:.2}", lo, lo - price).red(),
+                format!("{crc}{price}").white(),
+                format!("{crc}{:.2}+{:.2}", hi, hi - price).green(),
             ])
             .style(Color::White);
 
@@ -403,10 +426,7 @@ impl App {
     ///
     /// The tick event is where you can update the state of your application with any logic that
     /// needs to be updated at a fixed frame rate. E.g. polling a server, updating an animation.
-    pub fn tick(&mut self) {
-        let lock = ws_messages.lock();
-        self.calc_color();
-    }
+    pub fn tick(&mut self) {}
 
     /// Set running to false to quit the application.
     pub fn quit(&mut self) {
