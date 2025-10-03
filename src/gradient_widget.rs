@@ -87,6 +87,21 @@ impl GradientConfig {
         }
     }
 
+
+    pub fn new_2(c: Color,  c2: Color) -> Self {
+        let inter = interpolate_color(c, c2, 0.5);
+        Self {
+            top_start: c,
+            top_end: inter,
+            right_start: inter,
+            right_end: c2,
+            bottom_start: c2,
+            bottom_end: inter,
+            left_start: inter,
+            left_end: c,
+        }
+    }
+
     pub fn new_4(top_l: Color, top_r: Color, bot_r: Color, bot_l: Color) -> Self {
         Self {
             top_start: top_l,

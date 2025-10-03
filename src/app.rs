@@ -27,6 +27,8 @@ use ratatui::{
 };
 use ringbuffer::RingBuffer;
 
+use crate::utils::CRYPTO_COLOR_CODES;
+
 pub const UPPER_COLOR_BOUND: u8 = 255;
 pub const LOWER_COLOR_BOUND: u8 = 150;
 /// This should be easily subtractable/ addable to the two values above be. Otherwise the type goes
@@ -35,22 +37,6 @@ pub const LOWER_COLOR_BOUND: u8 = 150;
 pub const CHANGE_COLOR_BY: u8 = 5;
 
 lazy_static! {
-    pub static ref CRYPTO_COLOR_CODES: HashMap<String, GradientConfig> = HashMap::from([(
-        "SOL-USD".to_string(),
-        GradientConfig::new_4(
-            Color::Rgb(154, 69, 254), // PURUPLE
-            Color::Rgb(87, 152, 203), // PURPLE - GREEN
-            Color::Rgb(21, 240, 150), // GREEN
-            Color::Rgb(87, 152, 203), // PURPLE - GREEN
-        )
-    ),(
-        "BTC-USD".to_string(),
-        GradientConfig::new_1(Color::Rgb(247, 147, 26))
-    ),(
-        "ETH-USD".to_string(),
-        GradientConfig::new_1(Color::Rgb(72, 203, 217))
-    )
-    ]);
     static ref WATCHING_AMOUNT: Arc<i32> = Arc::new(0);
 }
 
@@ -397,9 +383,10 @@ impl App {
         .x_axis(x_axis)
         .y_axis(y_axis);
 
+        let c = coin.split('-').collect::<Vec<&str>>()[0];
         let widget = GradientWrapper::new(chart).title(title).gradient_colors(
             CRYPTO_COLOR_CODES
-                .get(&coin)
+                .get(c)
                 .unwrap_or(&GradientConfig::default())
                 .clone(),
         );
