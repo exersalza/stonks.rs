@@ -31,10 +31,7 @@ export function App() {
 
         if (!svg) return;
 
-        while (svg.firstChild) {
-            console.log(String(svg.firstChild));
-            svg.removeChild(svg.firstChild)
-        }
+        Array.from(svg.querySelectorAll("line")).forEach((el) => el.remove());
 
         const width = svg.clientWidth;
         const height = svg.clientHeight;
@@ -109,7 +106,7 @@ export function App() {
             </svg>
 
 
-            <div className={"fixed bg-radial from-zinc-500 to-black rounded-full text-clip transition-opacity"} style={{
+            <div className={"fixed bg-radial from-zinc-700 to-black to-70% rounded-full text-clip transition-opacity"} style={{
                 top: mX,
                 left: mY,
                 height: HIGHLIGHT_SIZE,
