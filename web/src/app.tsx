@@ -1,5 +1,6 @@
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { Content } from "./comps/content";
 
 
 const HIGHLIGHT_SIZE = (window.screen.height + window.screen.width) / 4
@@ -26,26 +27,6 @@ export function App() {
     const mouseGone = () => {
         setMousePresent(0)
     }
-
-
-
-    const calcPoints = (svg: SVGSVGElement) => {
-        let points = [];
-
-        const width = svg.clientWidth;
-        const height = svg.clientHeight;
-        const numberOfLines = 50;
-
-        let last_x2 = 0;
-        let last_y2 = Math.random() * height;
-
-
-        for (let i = 0; i < numberOfLines; i++) {
-
-        }
-
-    }
-
 
     const renderSvg = () => {
         const svg = stonksLineRef.current;
@@ -97,7 +78,6 @@ export function App() {
 
         svg.appendChild(path);
     }
-
 
 
     useEffect(() => {
@@ -159,7 +139,6 @@ export function App() {
                 </defs>
             </svg>
 
-
             <div className={"fixed bg-radial from-zinc-700 to-black to-70% rounded-full text-clip transition-opacity"} style={{
                 top: mX,
                 left: mY,
@@ -167,6 +146,8 @@ export function App() {
                 width: HIGHLIGHT_SIZE,
                 opacity: mousePresent
             }} />
+
+            <Content />
         </div>
     )
 }
