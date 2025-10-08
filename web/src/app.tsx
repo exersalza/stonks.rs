@@ -1,7 +1,8 @@
+import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 
-const HIGHLIGHT_SIZE = (window.screen.height + window.screen.width) / 6
+const HIGHLIGHT_SIZE = (window.screen.height + window.screen.width) / 4
 
 export function App() {
     const screen = window.screen;
@@ -39,44 +40,64 @@ export function App() {
         let last_y2 = Math.random() * height;
 
 
-        for (let i = 0; i < numberOfLines; i++) {}
+        for (let i = 0; i < numberOfLines; i++) {
+
+        }
 
     }
 
 
     const renderSvg = () => {
         const svg = stonksLineRef.current;
-
         if (!svg) return;
 
-        // Array.from(svg.querySelectorAll("line")).forEach((el) => el.remove());
+        Array.from(svg.querySelectorAll("path")).forEach((el) => el.remove());
 
         const width = svg.clientWidth;
         const height = svg.clientHeight;
-        const numberOfLines = 50;
+        const numberOfPoints = 50;
+        const maxStep = height * 0.05;
 
-        let last_x2 = 0;
-        let last_y2 = Math.random() * height;
+        let points = [];
+        let last_y = height / 2;
 
-        for (let i = 0; i < numberOfLines; i++) {
-            const x2 = last_x2 + width / numberOfLines;
-            const y2 = Math.random() * height ;
-
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", last_x2);
-            line.setAttribute("y1", last_y2);
-            line.setAttribute("x2", x2);
-            line.setAttribute("y2", y2);
-            line.setAttribute("stroke", "green");
-            // line.setAttribute("mask", `url(#${maskId})`);
-            line.setAttribute("stroke-width", "2");
-
-            svg.appendChild(line);
-
-            last_x2 = x2;
-            last_y2 = y2;
+        for (let i = 0; i <= numberOfPoints; i++) {
+            const x = (i * width) / numberOfPoints;
+            const deltaY = (Math.random() * 2 - 1) * maxStep;
+            last_y = Math.min(Math.max(last_y + deltaY, 0), height);
+            points.push({ x, y: last_y });
         }
+
+        let d = `M ${points[0].x} ${points[0].y}`;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i === 0 ? i : i - 1];
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+            const cp1x = p1.x + (p2.x - p0.x) / 6;
+            const cp1y = p1.y + (p2.y - p0.y) / 6;
+            const cp2x = p2.x - (p3.x - p1.x) / 6;
+            const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+            d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+        }
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", d);
+        // path.setAttribute("stroke", "url(#lineGradient)");
+        path.setAttribute("stroke", "white");
+        path.setAttribute("stroke-width", "2");
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+
+        path.setAttribute("mask", `url(#${maskId})`)
+
+        svg.appendChild(path);
     }
+
 
 
     useEffect(() => {
@@ -89,10 +110,12 @@ export function App() {
             refsda.addEventListener("mouseleave", mouseGone)
         }
 
+        window.addEventListener("resize", renderSvg)
         document.addEventListener("mousemove", setMouseLoc);
 
         return () => {
             document.removeEventListener("mousemove", setMouseLoc);
+            window.removeEventListener("resize", renderSvg)
 
             if (refsda) {
                 refsda.addEventListener("mouseenter", holyshitAMouseAppeared)
@@ -128,7 +151,7 @@ export function App() {
                         <circle
                             cx={mY + HIGHLIGHT_SIZE / 2}
                             cy={mX + HIGHLIGHT_SIZE / 2}
-                            r={HIGHLIGHT_SIZE / 2}
+                            r={HIGHLIGHT_SIZE / 3.5}
                             fill="url(#softMaskGradient)"
                             style={{ opacity: mousePresent }}
                         />
@@ -144,7 +167,6 @@ export function App() {
                 width: HIGHLIGHT_SIZE,
                 opacity: mousePresent
             }} />
-
         </div>
     )
 }

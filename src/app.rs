@@ -118,9 +118,6 @@ fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<R
 
             vec![left, right]
         }
-        _ => Layout::vertical([Constraint::Percentage(100)])
-            .areas::<1>(area)
-            .to_vec(),
     }
 }
 
