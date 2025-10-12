@@ -3,6 +3,13 @@ name = "crypto_watcher"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+codegen-units = 1 # Allows compiler to perform better optimization.
+lto = true # Enables Link-time Optimization.
+opt-level = "s" # Prioritizes small binary size. Use `3` if you prefer speed.
+strip = true # Ensures debug symbols are removed.
+
+
 [dependencies]
 reqwest = "0.12.23"
 tokio = { version = "1.47.1", features = ["full"] }
