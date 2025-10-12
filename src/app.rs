@@ -66,13 +66,12 @@ fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<R
     match window_type {
         // WindowType::Master => todo!(),
         WindowType::Splace => {
+            let amount_32 = amount as f32;
+            let amount_64 = amount as f64;
             // flooring here so we can get the max fitable without any rendering problems
             let w_max = (area.width as f32 / BODY_MIN_W as f32)
                 .floor()
                 .min(amount as f32);
-            let h_max = ((area.height as f32 / BODY_MIN_H as f32).floor()).min(amount as f32);
-
-            let can_fit = h_max * w_max;
 
             // check if we can have an equal amount on the horizontal and vertical
             let [w_act, h_act] = if (amount as f64).sqrt() == (amount as f64).sqrt().floor() {
@@ -80,8 +79,8 @@ fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<R
 
             // else do some other math i dont understand anymore
             } else {
-                let w_act = (w_max - amount as f32 + amount as f32).floor();
-                let h_act = (amount as f32 / w_act).ceil();
+                let w_act = ((w_max - amount_32) + amount_32).floor();
+                let h_act = (amount_32 / w_act).ceil();
 
                 [w_act as f64, h_act as f64]
             };
@@ -93,7 +92,7 @@ fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<R
                 Layout::vertical(vec![Constraint::Fill(1); h_act as usize]).split(area);
 
             for i in main_verti.iter() {
-                if (amount as f64) - filled_spots == 1.0 {
+                if amount_64 - filled_spots == 1.0 {
                     ret_rects.push(
                         Layout::horizontal(vec![Constraint::Fill(1)])
                             .split(*i)
@@ -229,6 +228,7 @@ impl App {
                     );
                     return;
                 }
+
                 // TODO: add layouts for different screen sizes and for the amount of chains to
                 // watch
                 let [top, body, bottom] = Layout::vertical([
