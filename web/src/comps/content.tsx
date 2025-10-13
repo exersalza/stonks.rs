@@ -1,11 +1,14 @@
 import { useEffect, useState } from "preact/hooks"
+import githubMarkWhite  from "/github-mark-white.svg"
+
+const PROJECT_LINK = "http://github.com/exersalza/stonks.rs";
 
 export const Badge = ({ title, content }: { title?: any, content: any }) => {
     return (
         <div className={"border-white border-1 rounded-lg select-none flex gap-1"}>
             {
                 title ?
-                    <p className={"bg-zinc-600 rounded-lg px-2"}>
+                    <p className={"bg-zinc-600 rounded-[6px] px-2 flex justify-center items-center"}>
                         {title}
                     </p> : ""
             }
@@ -25,13 +28,17 @@ export const Content = () => {
                     <h1 className={"text-xl"}><code>$ ./stonks.rs</code></h1>
                     <div className={"flex gap-2"}>
                         {
-                            [["tui", <a href="https://ratatui.rs" className={"underline"}>ratatui</a>], ["lang", "rust"]].map((ele, i) => {
+                            [
+                                ["tui", <a href="https://ratatui.rs" className={"underline"}>ratatui</a>],
+                                ["lang", "rust 🦀🚀"],
+                                [<img src={githubMarkWhite} className={'size-5'} />, <a href={PROJECT_LINK} className={"underline"}>github</a>]
+                            ].map((ele, i) => {
                                 let e: any = ele;
                                 let t: any = "";
 
                                 if (ele instanceof Array) {
-                                    e = ele[1]
-                                    t = ele[0]
+                                    e = ele[1];
+                                    t = ele[0];
                                 }
 
                                 return (
