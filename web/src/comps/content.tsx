@@ -1,7 +1,10 @@
-import { useEffect, useState } from "preact/hooks"
-import githubMarkWhite  from "/github-mark-white.svg"
+import {  useState } from "preact/hooks"
+import githubMarkWhite from "/github-mark-white.svg"
+import rat from "/rat-dance.gif"
 
 const PROJECT_LINK = "http://github.com/exersalza/stonks.rs";
+
+
 
 export const Badge = ({ title, content }: { title?: any, content: any }) => {
     return (
@@ -20,12 +23,38 @@ export const Badge = ({ title, content }: { title?: any, content: any }) => {
 }
 
 
+const Rats = ({ engaged }: { engaged: boolean }) => {
+    if (engaged) {
+        return (
+            <div className={"h-screen w-screen pointer-events-none absolute flex justify-between"}>
+                <div>
+                    <img src={rat} />
+                    <img src={rat} />
+                </div>
+                <div>
+                    <img src={rat} />
+                    <img src={rat} />
+                </div>
+            </div>
+        )
+    }
+
+
+    return (
+        <div></div>
+    )
+}
+
+
 export const Content = () => {
+    const [ratsEngaged, setRatsEngaged] = useState<boolean>(false);
+
+
     return (
         <div className={"absolute h-screen w-screen z-50 top-0 left-0 grid place-content-center"}>
-            <div className={"border-1 border-white rounded-lg bg-black/90"}>
+            <div className={"border-1 border-white rounded-lg bg-black/90 transition-all"}>
                 <div className={"flex text-white flex-col p-4 gap-4"}>
-                    <h1 className={"text-xl"}><code>$ ./stonks.rs</code></h1>
+                    <h1 className={"text-xl text-center"}><code>$ ./stonks.rs</code></h1>
                     <div className={"flex gap-2"}>
                         {
                             [
@@ -47,15 +76,30 @@ export const Content = () => {
                             })
                         }
                     </div>
-                    <ol>
-                        <li>some</li>
-                        <li>more</li>
-                        <li>omg</li>
-                        <li>stop</li>
-                        <li>please</li>
+
+                    <details className={"transition-all"}>
+                        <summary>Preview</summary>
+                        <p>no example yet ... windows 11 is sabotaging me</p>
+                    </details>
+
+                    <ol className={"list-disc mx-4"}>
+                        <li>Can display as many Chains as your screen supports.</li>
+                        <li>Two prebuilt layouts (Master, Splace)</li>
+                        <li>Coinbase and Kraken apis</li>
+                        <li>Vim motion bindings</li>
                     </ol>
+                    <div className={"flex gap-2 justify-center"}>
+                        <input
+                            id="engageRats"
+                            type="checkbox"
+                            checked={ratsEngaged}
+                            onClick={() => setRatsEngaged(prev => !prev)} />
+                        <label for="engageRats" className={"select-none"}>engage rats</label>
+                    </div>
                 </div>
             </div>
+
+            <Rats engaged={ratsEngaged} />
         </div>
     )
 }

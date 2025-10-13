@@ -80,9 +80,9 @@ fn calc_body_layout(area: Rect, amount: usize, window_type: WindowType) -> Vec<R
             // else do some other math i dont understand anymore
             } else {
                 let w_act = ((w_max - amount_32) + amount_32).floor();
-                let h_act = (amount_32 / w_act).ceil();
+                let h_act: f64 = (amount_32 / w_act).ceil().into();
 
-                [w_act as f64, h_act as f64]
+                [w_act as f64, h_act]
             };
 
             let mut filled_spots = 0.0;
