@@ -16,6 +16,7 @@ use crate::{
 
 use chrono::{DateTime, Local, TimeZone, Utc};
 use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
@@ -38,6 +39,7 @@ pub const CHANGE_COLOR_BY: u8 = 5;
 
 lazy_static! {
     static ref WATCHING_AMOUNT: Arc<i32> = Arc::new(0);
+    static ref inputs: Arc<Mutex<Vec<KeyEvent>>> = Arc::new(Mutex::new(vec![]));
 }
 
 fn convert_timestamp_to_locale(ts: f64) -> String {
@@ -297,7 +299,7 @@ impl App {
         let tmp_data = match ws_messages.lock().clone().get(&coin) {
             Some(v) => v
                 .iter()
-                .filter(|f| f.product_id == coin)
+                .filter(|f| f.product_id == Some(coin.clone()))
                 .map(|f| f.to_owned())
                 .collect::<Vec<WsMessage>>(),
             None => return,
@@ -306,10 +308,10 @@ impl App {
         let data = tmp_data
             .iter()
             .map(|i| {
-                let time = i.time.parse::<DateTime<chrono::Utc>>().unwrap();
+                let time = i.time.clone().unwrap().parse::<DateTime<chrono::Utc>>().unwrap();
                 (
                     time.timestamp_millis() as f64,
-                    i.price.parse::<f64>().unwrap_or(0.0),
+                    i.price.clone().unwrap().parse::<f64>().unwrap_or(0.0),
                 )
             })
             .collect::<Vec<(f64, f64)>>();
@@ -359,7 +361,7 @@ impl App {
         .map(|i: u64| (i as f64, i.pow(2) as f64))
         .collect::<Vec<(f64, f64)>>(); */
 
-        let buys = tmp_data.iter().filter(|f| f.side == "buy").count();
+        let buys = tmp_data.iter().filter(|f| f.side.clone().unwrap() == "buy").count();
 
         // If we have an overall surpluss of buys, we display it green to show the past 5k request
         // bias
@@ -394,7 +396,15 @@ impl App {
     pub fn handle_key_events(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
         let is_shift = key_event.modifiers == KeyModifiers::SHIFT;
         let is_ctrl = key_event.modifiers == KeyModifiers::CONTROL;
-        let is_alt = key_event.modifiers == KeyModifiers::ALT;
+        let _is_alt = key_event.modifiers == KeyModifiers::ALT;
+
+        {
+            let mut lock = inputs.lock();
+            lock.push(key_event.clone());
+        }
+
+
+        key_event;
 
         match key_event.code {
             KeyCode::Esc | KeyCode::Char('q') => self.events.send(AppEvent::Quit),
