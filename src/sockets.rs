@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Display, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use futures::{SinkExt, StreamExt};
+use futures::{FutureExt, SinkExt, StreamExt};
 use parking_lot::Mutex;
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ lazy_static::lazy_static! {
 
 #[allow(non_camel_case_types)]
 #[derive(Deserialize, Serialize, EnumIter, PartialEq, Eq, Debug, Clone, Default, Display)]
-pub enum Type {
+pub enum CBChanelType {
     #[default]
     ticker,
     heartbeat,
@@ -38,7 +38,7 @@ crate::pub_fields! {
     #[derive(Debug, Clone, Deserialize, Serialize, Default)]
     struct WsMessage {
         /// The type of the message
-        r#type: Type,
+        r#type: CBChanelType,
         /// Gets increased by every message
         sequence: Option<usize>,
         /// The product that this message comes from
@@ -82,11 +82,15 @@ impl BaseSocket {
 
         let (stream, _res) = connect_async(req).await.unwrap();
         let (mut tx, mut rx) = stream.split();
+        let (mut os_tx, mut os_rx) = tokio::sync::oneshot::channel::<i32>();
 
         let msg = Message::text(
             json!({
                   "type": "subscribe",
-                  "channels": Type::iter().filter(|f| *f != Type::subscriptions).map(|f| format!("{f}")).collect::<Vec<String>>(),
+                  "channels": CBChanelType::iter()
+                                .filter(|f| *f != CBChanelType::subscriptions)
+                                .map(|f| format!("{f}"))
+                                .collect::<Vec<String>>(),
                   "product_ids": products
             })
             .to_string(),
@@ -94,38 +98,41 @@ impl BaseSocket {
 
         tx.send(msg).await.unwrap();
 
-
         tokio::spawn(Self::check_heartbeat());
 
-        while let Some(msg) = rx.next().await {
-            match msg?.clone() {
-                Message::Text(m) => {
-                    match Self::handle_message(m).await {
-                        Ok(_) => (),
-                        Err(e) => {
-                            dbg!(e);
+        loop {
+            tokio::select! {
+                Some(msg) = rx.next() => {
+                    match msg?.clone() {
+                        Message::Text(m) => {
+                            match Self::handle_message(m).await {
+                                Ok(_) => (),
+                                Err(e) => {
+                                    dbg!(e);
+                                }
+                            };
                         }
-                    };
-                }
-                Message::Ping(m) => tx.send(Message::Pong(m)).await?,
-                _ => {}
+                        Message::Ping(m) => tx.send(Message::Pong(m)).await?,
+                        _ => {}
+                    }
+                },
+                Ok(_) = &mut os_rx => {}
             }
         }
-
-        Ok(())
     }
 
-
-    async fn check_heartbeat() -> ! {
+    async fn check_heartbeat(tx: tokio::sync::oneshot::Sender<i32>) {
         let mut inter = interval(Duration::from_secs(1));
 
         loop {
             // check for heartbeat here
             let now = chrono::Utc::now();
 
-            let delta = *last_heartbeat.lock() - now;
+            let delta = now - *last_heartbeat.lock();
 
-            dbg!(delta);
+            if delta.as_seconds_f32() > 5.0 {
+                return;
+            }
 
             inter.tick().await;
         }
@@ -138,7 +145,7 @@ impl BaseSocket {
         let mut l = ws_messages.lock();
 
         match p_msg.r#type {
-            Type::ticker => {
+            CBChanelType::ticker => {
                 let prod_id = p_msg.product_id.clone().unwrap();
 
                 if !l.contains_key(&prod_id) {
@@ -151,7 +158,7 @@ impl BaseSocket {
 
                 l.get_mut(&prod_id).unwrap().enqueue(p_msg);
             }
-            Type::heartbeat => {
+            CBChanelType::heartbeat => {
                 let time = p_msg
                     .time
                     .clone()
@@ -161,7 +168,7 @@ impl BaseSocket {
                 *last_heartbeat.lock() = time;
             }
 
-            Type::subscriptions => {
+            CBChanelType::subscriptions => {
                 *connected.lock() = true;
             }
         }

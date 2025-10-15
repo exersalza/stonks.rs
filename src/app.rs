@@ -308,7 +308,12 @@ impl App {
         let data = tmp_data
             .iter()
             .map(|i| {
-                let time = i.time.clone().unwrap().parse::<DateTime<chrono::Utc>>().unwrap();
+                let time = i
+                    .time
+                    .clone()
+                    .unwrap()
+                    .parse::<DateTime<chrono::Utc>>()
+                    .unwrap();
                 (
                     time.timestamp_millis() as f64,
                     i.price.clone().unwrap().parse::<f64>().unwrap_or(0.0),
@@ -361,7 +366,10 @@ impl App {
         .map(|i: u64| (i as f64, i.pow(2) as f64))
         .collect::<Vec<(f64, f64)>>(); */
 
-        let buys = tmp_data.iter().filter(|f| f.side.clone().unwrap() == "buy").count();
+        let buys = tmp_data
+            .iter()
+            .filter(|f| f.side.clone().unwrap() == "buy")
+            .count();
 
         // If we have an overall surpluss of buys, we display it green to show the past 5k request
         // bias
@@ -402,7 +410,6 @@ impl App {
             let mut lock = inputs.lock();
             lock.push(key_event.clone());
         }
-
 
         key_event;
 

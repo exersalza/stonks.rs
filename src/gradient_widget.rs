@@ -87,8 +87,7 @@ impl GradientConfig {
         }
     }
 
-
-    pub fn new_2(c: Color,  c2: Color) -> Self {
+    pub fn new_2(c: Color, c2: Color) -> Self {
         let inter = interpolate_color(c, c2, 0.5);
         Self {
             top_start: c,
@@ -114,7 +113,6 @@ impl GradientConfig {
             left_end: top_l,
         }
     }
-
 }
 
 /// Wrapper that renders any widget with a customizable gradient border

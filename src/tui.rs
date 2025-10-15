@@ -1,16 +1,13 @@
 // This file is more or less depricated
 
-
-
 // Utils
 
 // Structs
 
-use terminal_size::terminal_size;
 use std::io::{self, Write};
+use terminal_size::terminal_size;
 
 const ESC: &'static str = "\x1b";
-
 
 pub const TOP_LEFT: char = '╭';
 pub const TOP_RIGHT: char = '╮';
@@ -19,8 +16,6 @@ pub const BOTTOM_RIGHT: char = '╯';
 
 pub const BORDER_VERT: char = '│';
 pub const BORDER_HORI: char = '─';
-
-
 
 pub struct Engine {
     screen: (u16, u16),
@@ -62,7 +57,4 @@ impl Engine {
         print!("{ESC}[2J{ESC}[H");
         io::stdout().flush().unwrap()
     }
-
-
-
 }
