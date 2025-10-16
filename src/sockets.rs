@@ -15,7 +15,7 @@ use tokio_tungstenite::{
     tungstenite::{Message, Utf8Bytes, client::IntoClientRequest},
 };
 
-use crate::{opts::CliOpts, utils::FEED_WS_URL};
+use crate::{opts::CliOpts, utils::CB_FEED_URL};
 
 // TODO: alloc 5k for each coin
 lazy_static::lazy_static! {
@@ -74,15 +74,60 @@ crate::pub_fields! {
     }
 }
 
+crate::pub_fields! {
+    #[derive(Debug, Clone, Deserialize, Serialize, Default)]
+    struct KrakenWsMessage {
+        symbol: Option<String>,
+        bid: Option<String>,
+        bid_qty: Option<String>,
+        ask: Option<String>,
+        ask_qty: Option<String>,
+        last: Option<String>,
+        volume: Option<String>,
+        vmap: Option<String>,
+        low: Option<String>,
+        high: Option<String>,
+        change: Option<String>,
+        change_pct: Option<String>,
+    }
+}
+
+
+impl WsMessage {
+    pub fn from_kk(other: KrakenWsMessage) -> Self {
+        Self {
+            r#type: CBChanelType::ticker,
+            sequence: None,
+            product_id: other.symbol,
+            price: other.last,
+            open_24h: None,
+            volume_24h: other.volume,
+            low_24h: other.low,
+            high_24h: other.high,
+            volume_30d: None,
+            best_bid: other.bid,
+            best_bid_size: other.bid_qty,
+            best_ask: other.ask,
+            best_ask_size: other.ask_qty,
+            side: None,
+            time: Some(chrono::Utc::now().to_rfc3339()),
+            trade_id: None,
+            last_size: None,
+        }
+    }
+}
+
+
+
 pub struct BaseSocket {}
 
 impl BaseSocket {
-    pub async fn connect(products: Vec<String>) -> anyhow::Result<()> {
-        let req = FEED_WS_URL.into_client_request().unwrap();
+    pub async fn connect_cb(products: Vec<String>) -> anyhow::Result<()> {
+        let req = CB_FEED_URL.into_client_request().unwrap();
 
         let (stream, _res) = connect_async(req).await.unwrap();
         let (mut tx, mut rx) = stream.split();
-        let (mut os_tx, mut os_rx) = tokio::sync::oneshot::channel::<i32>();
+        let (os_tx, mut os_rx) = tokio::sync::oneshot::channel::<i32>();
 
         let msg = Message::text(
             json!({
@@ -98,7 +143,7 @@ impl BaseSocket {
 
         tx.send(msg).await.unwrap();
 
-        tokio::spawn(Self::check_heartbeat());
+        tokio::spawn(Self::check_heartbeat(os_tx));
 
         loop {
             tokio::select! {
@@ -116,9 +161,15 @@ impl BaseSocket {
                         _ => {}
                     }
                 },
-                Ok(_) = &mut os_rx => {}
+                Ok(_) = &mut os_rx => {
+                    return Ok(())
+                }
             }
         }
+    }
+
+    pub async fn connect_kk() -> anyhow::Result<()> {
+        Ok(())
     }
 
     async fn check_heartbeat(tx: tokio::sync::oneshot::Sender<i32>) {
@@ -127,10 +178,12 @@ impl BaseSocket {
         loop {
             // check for heartbeat here
             let now = chrono::Utc::now();
-
             let delta = now - *last_heartbeat.lock();
 
             if delta.as_seconds_f32() > 5.0 {
+                if let Err(_) = tx.send(0) {
+                    //sender droppped
+                }
                 return;
             }
 

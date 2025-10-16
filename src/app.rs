@@ -368,7 +368,7 @@ impl App {
 
         let buys = tmp_data
             .iter()
-            .filter(|f| f.side.clone().unwrap() == "buy")
+            .filter(|f| f.side.clone().unwrap_or("none".into()) == "buy")
             .count();
 
         // If we have an overall surpluss of buys, we display it green to show the past 5k request

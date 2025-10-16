@@ -4,7 +4,8 @@ use std::collections::HashMap;
 
 use crate::gradient_widget::GradientConfig;
 
-pub const FEED_WS_URL: &'static str = "wss://ws-feed.exchange.coinbase.com";
+pub const CB_FEED_URL: &'static str = "wss://ws-feed.exchange.coinbase.com";
+pub const KK_WS_URL: &'static str = "wss://ws.kraken.com/v2";
 pub const CURRENCIES: [&'static str; 2] = ["$", "€"];
 
 lazy_static! {

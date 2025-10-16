@@ -5,6 +5,7 @@ use crate::{
     events::EventHandler,
     opts::CliOpts,
     sockets::{BaseSocket, WsMessage},
+    utils::CB_FEED_URL,
 };
 
 mod opts;
@@ -26,10 +27,22 @@ async fn main() -> color_eyre::Result<()> {
     let opts = CliOpts::parse();
     // color_eyre::install()?;
 
-    let thread = tokio::spawn(BaseSocket::connect(opts.watching));
-    let _ = thread.await.inspect(|i| {
-        dbg!(i);
-    });
+    let mut coins = opts.watching.clone();
+
+    let mut cb  = tokio::spawn(BaseSocket::connect_cb(opts.watching.clone()));
+    let mut kk = tokio::spawn(BaseSocket::connect_kk());
+
+
+    loop {
+        tokio::select! {
+            res = cb => {
+
+            },
+            res = kk => {
+
+            }
+        }
+    }
 
     /*
     let opts = CliOpts::parse();
