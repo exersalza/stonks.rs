@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
-use tokio::time::interval;
+use tokio::time::{interval, sleep};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{Message, Utf8Bytes, client::IntoClientRequest},
@@ -169,6 +169,8 @@ impl BaseSocket {
     }
 
     pub async fn connect_kk() -> anyhow::Result<()> {
+
+        sleep(Duration::from_secs(5)).await;
         Ok(())
     }
 

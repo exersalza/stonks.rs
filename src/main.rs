@@ -5,13 +5,13 @@ use crate::{
     events::EventHandler,
     opts::CliOpts,
     sockets::{BaseSocket, WsMessage},
-    utils::CB_FEED_URL,
 };
 
 mod opts;
 mod sockets;
 mod tui;
 mod utils;
+mod crypto;
 
 pub mod app;
 pub mod events;
@@ -25,22 +25,22 @@ pub mod gradient_widget;
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     let opts = CliOpts::parse();
-    // color_eyre::install()?;
+   // color_eyre::install()?;
 
     let mut coins = opts.watching.clone();
 
-    let mut cb  = tokio::spawn(BaseSocket::connect_cb(opts.watching.clone()));
+    let mut cb = tokio::spawn(BaseSocket::connect_cb(coins.clone()));
     let mut kk = tokio::spawn(BaseSocket::connect_kk());
-
 
     loop {
         tokio::select! {
-            res = cb => {
-
+            res = &mut cb => {
+                cb = tokio::spawn(BaseSocket::connect_cb(coins.clone()));
             },
-            res = kk => {
-
+            res = &mut kk => {
+                kk = tokio::spawn(BaseSocket::connect_kk());
             }
+            _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {}
         }
     }
 
@@ -56,5 +56,5 @@ async fn main() -> color_eyre::Result<()> {
     ratatui::restore(); */
     // res
     //
-    Ok(())
+    // Ok(())
 }
