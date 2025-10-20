@@ -45,11 +45,7 @@ lazy_static! {
 }
 
 fn on_offline<'a>(f: bool) -> Span<'a> {
-    if f {
-        "online".green()
-    } else {
-        "offline".red()
-    }
+    if f { "online".green() } else { "offline".red() }
 }
 
 fn convert_timestamp_to_locale(ts: f64) -> String {
@@ -264,9 +260,9 @@ impl App {
 
                 frame.render_widget(
                     Line::from(vec![
-                        Span::raw("coinbase: "),
+                        Span::raw("coinbase api: "),
                         cb,
-                        Span::raw(" kraken: "),
+                        Span::raw(", kraken api: "),
                         kk,
                     ])
                     .centered(),
@@ -276,12 +272,11 @@ impl App {
                 let layout: Vec<Rect> =
                     calc_body_layout(body, self.watching.len(), WindowType::Splace);
 
-                for (i, v) in layout.iter().enumerate() {
-                    if i >= self.watching.len() {
-                        continue;
-                    }
+                layout.iter().enumerate().for_each(|(i, v)| {
+                    let _ = i >= self.watching.len() && return;
+
                     self.render_chart(frame, v.to_owned(), self.watching[i].clone(), 60000.0);
-                }
+                });
             })?;
 
             match self.events.next().await? {
