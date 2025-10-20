@@ -19,11 +19,27 @@ use crate::{opts::CliOpts, utils::CB_FEED_URL};
 
 // TODO: alloc 5k for each coin
 lazy_static::lazy_static! {
+    pub static ref ws_connected: Arc<Mutex<WsConnections>> = Arc::new(Mutex::new(WsConnections::new(false, false)));
     pub static ref connected: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
     pub static ref last_heartbeat: Arc<Mutex<DateTime<Utc>>> = Arc::new(Mutex::new(chrono::Utc::now()));
     pub static ref ws_messages: Arc<Mutex<HashMap<String, AllocRingBuffer<WsMessage>>>> =
                 Arc::new(Mutex::new(HashMap::new()));
 }
+
+pub struct WsConnections {
+    pub coinbase: bool,
+    pub kraken: bool
+}
+
+impl WsConnections {
+    pub fn new(coinbase: bool, kraken: bool) -> Self {
+        Self {
+            coinbase,
+            kraken
+        }
+    }
+}
+
 
 #[allow(non_camel_case_types)]
 #[derive(Deserialize, Serialize, EnumIter, PartialEq, Eq, Debug, Clone, Default, Display)]

@@ -10,11 +10,13 @@ use crate::{
     events::{AppEvent, Event, EventHandler},
     gradient_widget::{GradientConfig, GradientWrapper},
     memes::{MEMES, XorShift32},
-    sockets::{WsMessage, ws_messages},
+    sockets::{WsMessage, ws_connected, ws_messages},
     utils::CURRENCIES,
 };
 
 use chrono::{DateTime, Local, TimeZone, Utc};
+use color_eyre::owo_colors::OwoColorize;
+use crossterm::event::KeyEventKind;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use ratatui::{
@@ -23,7 +25,7 @@ use ratatui::{
     layout::{self, Constraint, Layout, Rect},
     style::{Color, Stylize},
     symbols,
-    text::{Line, Text},
+    text::{Line, Span, Text},
     widgets::{Axis, Chart, Dataset, Paragraph},
 };
 use ringbuffer::RingBuffer;
@@ -40,6 +42,14 @@ pub const CHANGE_COLOR_BY: u8 = 5;
 lazy_static! {
     static ref WATCHING_AMOUNT: Arc<i32> = Arc::new(0);
     static ref inputs: Arc<Mutex<Vec<KeyEvent>>> = Arc::new(Mutex::new(vec![]));
+}
+
+fn on_offline<'a>(f: bool) -> Span<'a> {
+    if f {
+        "online".green()
+    } else {
+        "offline".red()
+    }
 }
 
 fn convert_timestamp_to_locale(ts: f64) -> String {
@@ -247,7 +257,21 @@ impl App {
                     Paragraph::new(format!("{top_text}\n{}", now)).centered(),
                     top,
                 );
-                frame.render_widget(Line::from(*bottom_text).centered(), bottom);
+
+                let con_lock = ws_connected.lock();
+                let cb = on_offline(con_lock.coinbase);
+                let kk = on_offline(con_lock.kraken);
+
+                frame.render_widget(
+                    Line::from(vec![
+                        Span::raw("coinbase: "),
+                        cb,
+                        Span::raw(" kraken: "),
+                        kk,
+                    ])
+                    .centered(),
+                    bottom,
+                );
 
                 let layout: Vec<Rect> =
                     calc_body_layout(body, self.watching.len(), WindowType::Splace);
@@ -347,8 +371,14 @@ impl App {
             None => return,
         }; */
 
-        let crc = match coin.split('-').collect::<Vec<&str>>()[1] {
+        let crc = match coin.split('-').collect::<Vec<&str>>()[1]
+            .to_uppercase()
+            .as_str()
+        {
             "EUR" => CURRENCIES[1],
+            "GBP" => CURRENCIES[2],
+            "JPY" => CURRENCIES[3],
+            "CHF" => CURRENCIES[4],
             _ => CURRENCIES[0], // default to $
         };
 
@@ -411,15 +441,16 @@ impl App {
             lock.push(key_event.clone());
         }
 
-        key_event;
-
-        match key_event.code {
-            KeyCode::Esc | KeyCode::Char('q') => self.events.send(AppEvent::Quit),
-            KeyCode::Char('c' | 'C') if is_ctrl => self.events.send(AppEvent::Quit),
-            KeyCode::Up => self.events.send(AppEvent::IncMult(is_shift)),
-            KeyCode::Down => self.events.send(AppEvent::DecMult(is_shift)),
-            _ => {}
+        if key_event.kind == KeyEventKind::Press {
+            match key_event.code {
+                KeyCode::Esc | KeyCode::Char('q') => self.events.send(AppEvent::Quit),
+                KeyCode::Char('c' | 'C') if is_ctrl => self.events.send(AppEvent::Quit),
+                KeyCode::Up => self.events.send(AppEvent::IncMult(is_shift)),
+                KeyCode::Down => self.events.send(AppEvent::DecMult(is_shift)),
+                _ => {}
+            }
         }
+
         Ok(())
     }
 

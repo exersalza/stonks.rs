@@ -2,16 +2,17 @@ use clap::Parser;
 
 use crate::{
     app::App,
+    crypto::{get_cb_pairs, get_kk_pairs},
     events::EventHandler,
     opts::CliOpts,
-    sockets::{BaseSocket, WsMessage},
+    sockets::{ws_connected, BaseSocket, WsMessage},
 };
 
+mod crypto;
 mod opts;
 mod sockets;
 mod tui;
 mod utils;
-mod crypto;
 
 pub mod app;
 pub mod events;
@@ -22,39 +23,50 @@ pub mod ui;
 /// Widgets
 pub mod gradient_widget;
 
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     let opts = CliOpts::parse();
-   // color_eyre::install()?;
+    // color_eyre::install()?;
 
     let mut coins = opts.watching.clone();
 
+    println!("[DEBUG] fetching coinbase pairs...");
+    let coinbase_pairs = get_cb_pairs().await.unwrap();
+    println!("[DEBUG] fetching kraken pairs...");
+    let kraken_pairs = get_kk_pairs().await.unwrap();
+
+    println!("[DEBUG] starting coinbase websocket...");
     let mut cb = tokio::spawn(BaseSocket::connect_cb(coins.clone()));
+    println!("[DEBUG] starting kraken websocket...");
     let mut kk = tokio::spawn(BaseSocket::connect_kk());
 
-    loop {
-        tokio::select! {
-            res = &mut cb => {
-                cb = tokio::spawn(BaseSocket::connect_cb(coins.clone()));
-            },
-            res = &mut kk => {
-                kk = tokio::spawn(BaseSocket::connect_kk());
-            }
-            _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {}
-        }
+    {
+        let mut f = ws_connected.lock();
+        f.kraken = true;
+        f.coinbase = true;
     }
 
-    /*
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = &mut cb => {
+                    cb = tokio::spawn(BaseSocket::connect_cb(coins.clone()));
+                },
+                _ = &mut kk => {
+                    kk = tokio::spawn(BaseSocket::connect_kk());
+                }
+                _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {}
+            }
+        }
+    });
+
     let opts = CliOpts::parse();
-
     let term = ratatui::init();
-
     let app = App::new(Some(opts.watching));
-
     let res = app.run(term).await;
 
-    ratatui::restore(); */
-    // res
-    //
+    ratatui::restore();
+    res
     // Ok(())
 }

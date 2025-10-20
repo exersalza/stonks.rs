@@ -6,7 +6,7 @@ use crate::gradient_widget::GradientConfig;
 
 pub const CB_FEED_URL: &'static str = "wss://ws-feed.exchange.coinbase.com";
 pub const KK_WS_URL: &'static str = "wss://ws.kraken.com/v2";
-pub const CURRENCIES: [&'static str; 2] = ["$", "€"];
+pub const CURRENCIES: [&'static str; 5] = ["$", "€", "£", "¥", "Fr"];
 
 lazy_static! {
     pub static ref CRYPTO_COLOR_CODES: HashMap<String, GradientConfig> = HashMap::from([
