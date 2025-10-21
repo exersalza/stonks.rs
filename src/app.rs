@@ -412,15 +412,15 @@ impl App {
         let def = WsMessage::default();
         let last_entry = tmp_data.last().unwrap_or(&def);
 
-        let title = format!(
-            "{} - 24h High: {} - 24h Low: {}",
-            coin,
-            last_entry.high_24h.clone().unwrap_or("0".into()),
-            last_entry.low_24h.clone().unwrap_or("0".into())
-        );
+        let title = Line::from(vec![Span::raw(&coin)]).style(Color::White);
 
-        let title = Line::from(vec!["hello".green()]);
-
+        let footer = Line::from(vec![
+            "24h High: ".into(),
+            format!("{crc}{}", last_entry.high_24h.clone().unwrap_or("0".into())).green(),
+            " - 24h Low: ".into(),
+            format!("{crc}{}", last_entry.low_24h.clone().unwrap_or("0".into())).red(),
+        ])
+        .style(Color::White);
 
         let chart = Chart::new(vec![
             Dataset::default()
@@ -432,12 +432,15 @@ impl App {
         .y_axis(y_axis);
 
         let c = coin.split('-').collect::<Vec<&str>>()[0];
-        let widget = GradientWrapper::new(chart).title(title).gradient_colors(
-            CRYPTO_COLOR_CODES
-                .get(c)
-                .unwrap_or(&GradientConfig::default())
-                .clone(),
-        );
+        let widget = GradientWrapper::new(chart)
+            .title(title)
+            .footer(footer)
+            .gradient_colors(
+                CRYPTO_COLOR_CODES
+                    .get(c)
+                    .unwrap_or(&GradientConfig::default())
+                    .clone(),
+            );
         frame.render_widget(widget, area);
     }
 

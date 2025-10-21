@@ -1,8 +1,9 @@
 use lazy_static::lazy_static;
 use ratatui::style::Color;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, env::temp_dir, path::{Path, PathBuf}};
 
-use crate::gradient_widget::GradientConfig;
+use crate::{crypto::{CoinbasePair, KrakenPair, Pair}, gradient_widget::GradientConfig};
 
 pub const CB_FEED_URL: &'static str = "wss://ws-feed.exchange.coinbase.com";
 pub const KK_WS_URL: &'static str = "wss://ws.kraken.com/v2";
@@ -104,4 +105,37 @@ lazy_static! {
 pub fn rotate_string(i: &mut String) -> String {
     // might aswell unwrap bc we know there has to be something inside the string
     format!("{}{}", i.pop().unwrap(), i)
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoinCache {
+    file_location: PathBuf,
+    pairs: Vec<Pair>,
+}
+
+
+impl CoinCache {
+    pub fn new() -> Self {
+        let filename = Self::gen_file_name();
+
+        println!("{}{}", temp_dir().display(), filename);
+
+        Self {
+            file_location: temp_dir(),
+            pairs: vec![]
+        }
+    }
+
+    pub fn sync_to_file(d: &Vec<Pair>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn gen_file_name() -> String {
+        let mark = String::from_utf8( base64::encode("stonks.rs").into() ).unwrap();
+        let today = chrono::Utc::now().format("%Y-%d-%m").to_string();
+
+
+        format!("{today}{mark}")
+    }
 }

@@ -57,7 +57,7 @@ crate::pub_fields! {
         product_id: Option<String>,
         /// The current Price
         price: Option<String>,
-
+        /// opening price exactly 24h ago
         open_24h: Option<String>,
         /// The total trading volume in the past 24 hours
         volume_24h: Option<String>,
@@ -65,7 +65,7 @@ crate::pub_fields! {
         low_24h: Option<String>,
         /// The highest price in the last 24 hours
         high_24h: Option<String>,
-
+        /// full trading volume of the past 30d
         volume_30d: Option<String>,
         /// The best bid to the current price
         best_bid: Option<String>,
@@ -81,7 +81,7 @@ crate::pub_fields! {
         time: Option<String>,
         /// The corresponding id to this transaction
         trade_id: Option<usize>,
-
+        /// the volume of the last trade
         last_size: Option<String>,
     }
 }

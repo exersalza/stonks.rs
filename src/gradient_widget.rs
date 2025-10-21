@@ -3,12 +3,11 @@
 //! This module provides functionality to wrap any ratatui widget with a customizable
 //! gradient border using rounded corners.
 
-use color_eyre::owo_colors::OwoColorize;
 use ratatui::{
     buffer::Buffer,
     layout::{Position, Rect},
     style::Color,
-    text::{Line, Span},
+    text::Line,
     widgets::Widget,
 };
 
@@ -25,13 +24,35 @@ pub fn interpolate_color(start: Color, end: Color, ratio: f32) -> Color {
     }
 }
 
-fn set_c_fg(buf: &mut Buffer, x: u16, y: u16, fg: Option<Color>, ch: char) {
+fn set_ch_fg(buf: &mut Buffer, x: u16, y: u16, fg: Option<Color>, ch: char) {
     if let Some(c) = buf.cell_mut(Position::new(x, y)) {
         c.set_char(ch);
 
         if let Some(col) = fg {
             c.set_fg(col);
         }
+    }
+}
+
+fn set_text_into_line<'a>(buf: &mut Buffer, area: Rect, y: u16, content: &Line) {
+    let x = area.x + (area.width.saturating_sub(content.width() as u16 + 2)) / 2;
+    if x < area.right() - 1 {
+        set_ch_fg(buf, x, y, None, '┤');
+
+        buf.set_line(
+            x + 1,
+            y,
+            content,
+            content.width() as u16,
+        );
+
+        set_ch_fg(
+            buf,
+            x + 1 + content.width() as u16,
+            y,
+            None,
+            '├',
+        );
     }
 }
 
@@ -153,6 +174,7 @@ impl GradientConfig {
 pub struct GradientWrapper<'a, W> {
     widget: W,
     title: Option<Line<'a>>,
+    footer: Option<Line<'a>>,
     gradient_config: GradientConfig,
 }
 
@@ -162,6 +184,7 @@ impl<'a, W> GradientWrapper<'a, W> {
         Self {
             widget,
             title: None,
+            footer: None,
             gradient_config: GradientConfig::default(),
         }
     }
@@ -169,6 +192,12 @@ impl<'a, W> GradientWrapper<'a, W> {
     /// Sets the title to be displayed in the top border
     pub fn title<T: Into<Line<'a>>>(mut self, title: T) -> Self {
         self.title = Some(title.into());
+        self
+    }
+
+    /// Sets the footer to be displayed in the bottom border
+    pub fn footer<T: Into<Line<'a>>>(mut self, footer: T) -> Self {
+        self.footer = Some(footer.into());
         self
     }
 
@@ -216,7 +245,7 @@ impl<'a, W> GradientWrapper<'a, W> {
         ]
         .into_iter()
         .for_each(|(x, y, ch, fg)| {
-            set_c_fg(buf, x, y, Some(fg), ch);
+            set_ch_fg(buf, x, y, Some(fg), ch);
         });
 
         // Draw top and bottom borders with horizontal gradient
@@ -226,8 +255,8 @@ impl<'a, W> GradientWrapper<'a, W> {
             let b_color =
                 interpolate_color(config.bottom_start, config.bottom_end, (ratio - 1.0).abs());
 
-            set_c_fg(buf, x, area.top(), Some(color), '─');
-            set_c_fg(buf, x, area.bottom() - 1, Some(b_color), '─');
+            set_ch_fg(buf, x, area.top(), Some(color), '─');
+            set_ch_fg(buf, x, area.bottom() - 1, Some(b_color), '─');
         }
 
         // Draw left and right borders with vertical gradient
@@ -236,25 +265,18 @@ impl<'a, W> GradientWrapper<'a, W> {
             let r_color = interpolate_color(config.right_start, config.right_end, ratio);
             let color = interpolate_color(config.left_start, config.left_end, (ratio - 1.0).abs());
 
-            set_c_fg(buf, area.left(), y, Some(color), '│');
-            set_c_fg(buf, area.right() - 1, y, Some(r_color), '│');
+            set_ch_fg(buf, area.left(), y, Some(color), '│');
+            set_ch_fg(buf, area.right() - 1, y, Some(r_color), '│');
         }
 
         // Draw title if provided
         if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.width() as u16 + 2)) / 2;
-            if title_x < area.right() - 1 {
-                set_c_fg(buf, title_x, area.top(), None, '┤');
+            set_text_into_line(buf, area, area.top(), title);
+        }
 
-                buf.set_line(
-                    title_x + 1,
-                    area.top(),
-                    title,
-                    title.width() as u16,
-                );
-
-                set_c_fg(buf, title_x + 1 + title.width() as u16, area.top(), None, '├');
-            }
+        // Draw footer if provided
+        if let Some(ref footer) = self.footer {
+            set_text_into_line(buf, area, area.bottom() - 1, footer);
         }
     }
 }

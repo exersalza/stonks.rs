@@ -5,7 +5,7 @@ use crate::{
     crypto::{get_cb_pairs, get_kk_pairs},
     events::EventHandler,
     opts::CliOpts,
-    sockets::{ws_connected, BaseSocket, WsMessage},
+    sockets::{ws_connected, BaseSocket, WsMessage}, utils::CoinCache,
 };
 
 mod crypto;
@@ -30,6 +30,15 @@ async fn main() -> color_eyre::Result<()> {
     // color_eyre::install()?;
 
     let mut coins = opts.watching.clone();
+
+    if coins.len() > 0 {
+
+    }
+
+
+    let cc = CoinCache::new();
+
+    return Ok(());
 
     println!("[DEBUG] fetching coinbase pairs...");
     // let coinbase_pairs = get_cb_pairs().await.unwrap();
