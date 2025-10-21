@@ -28,18 +28,14 @@ lazy_static::lazy_static! {
 
 pub struct WsConnections {
     pub coinbase: bool,
-    pub kraken: bool
+    pub kraken: bool,
 }
 
 impl WsConnections {
     pub fn new(coinbase: bool, kraken: bool) -> Self {
-        Self {
-            coinbase,
-            kraken
-        }
+        Self { coinbase, kraken }
     }
 }
-
 
 #[allow(non_camel_case_types)]
 #[derive(Deserialize, Serialize, EnumIter, PartialEq, Eq, Debug, Clone, Default, Display)]
@@ -108,7 +104,6 @@ crate::pub_fields! {
     }
 }
 
-
 impl WsMessage {
     pub fn from_kk(other: KrakenWsMessage) -> Self {
         Self {
@@ -132,8 +127,6 @@ impl WsMessage {
         }
     }
 }
-
-
 
 pub struct BaseSocket {}
 
@@ -161,6 +154,11 @@ impl BaseSocket {
 
         tokio::spawn(Self::check_heartbeat(os_tx));
 
+        {
+            let mut l = ws_connected.lock();
+            l.coinbase = true;
+        }
+
         loop {
             tokio::select! {
                 Some(msg) = rx.next() => {
@@ -185,8 +183,11 @@ impl BaseSocket {
     }
 
     pub async fn connect_kk() -> anyhow::Result<()> {
-
         sleep(Duration::from_secs(5)).await;
+        {
+            let mut l = ws_connected.lock();
+            l.kraken = true;
+        }
         Ok(())
     }
 

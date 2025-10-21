@@ -446,40 +446,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crypto_watcher"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64",
- "chrono",
- "clap",
- "color-eyre",
- "colorgrad",
- "crossterm 0.28.1",
- "ecdsa 0.15.1",
- "futures",
- "hmac",
- "lazy_static",
- "notify",
- "p256",
- "parking_lot",
- "ratatui",
- "reqwest",
- "ringbuffer",
- "serde",
- "serde_derive",
- "serde_json",
- "sha2",
- "strum 0.27.2",
- "strum_macros 0.27.2",
- "terminal_size",
- "tokio",
- "tokio-tungstenite",
- "toml",
- "tui-gradient-block",
-]
-
-[[package]]
 name = "csscolorparser"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2326,6 +2292,40 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "stonks_rs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64",
+ "chrono",
+ "clap",
+ "color-eyre",
+ "colorgrad",
+ "crossterm 0.28.1",
+ "ecdsa 0.15.1",
+ "futures",
+ "hmac",
+ "lazy_static",
+ "notify",
+ "p256",
+ "parking_lot",
+ "ratatui",
+ "reqwest",
+ "ringbuffer",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha2",
+ "strum 0.27.2",
+ "strum_macros 0.27.2",
+ "terminal_size",
+ "tokio",
+ "tokio-tungstenite",
+ "toml",
+ "tui-gradient-block",
+]
 
 [[package]]
 name = "strsim"

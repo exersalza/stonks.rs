@@ -3,7 +3,14 @@
 //! This module provides functionality to wrap any ratatui widget with a customizable
 //! gradient border using rounded corners.
 
-use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
+use color_eyre::owo_colors::OwoColorize;
+use ratatui::{
+    buffer::Buffer,
+    layout::{Position, Rect},
+    style::Color,
+    text::{Line, Span},
+    widgets::Widget,
+};
 
 /// Interpolates between two RGB colors based on a ratio
 pub fn interpolate_color(start: Color, end: Color, ratio: f32) -> Color {
@@ -15,6 +22,16 @@ pub fn interpolate_color(start: Color, end: Color, ratio: f32) -> Color {
             Color::Rgb(r, g, b)
         }
         _ => start,
+    }
+}
+
+fn set_c_fg(buf: &mut Buffer, x: u16, y: u16, fg: Option<Color>, ch: char) {
+    if let Some(c) = buf.cell_mut(Position::new(x, y)) {
+        c.set_char(ch);
+
+        if let Some(col) = fg {
+            c.set_fg(col);
+        }
     }
 }
 
@@ -133,13 +150,13 @@ impl GradientConfig {
 ///
 /// frame.render_widget(gradient_chart, area);
 /// ```
-pub struct GradientWrapper<W> {
+pub struct GradientWrapper<'a, W> {
     widget: W,
-    title: Option<String>,
+    title: Option<Line<'a>>,
     gradient_config: GradientConfig,
 }
 
-impl<W> GradientWrapper<W> {
+impl<'a, W> GradientWrapper<'a, W> {
     /// Creates a new gradient wrapper around the given widget
     pub fn new(widget: W) -> Self {
         Self {
@@ -150,7 +167,7 @@ impl<W> GradientWrapper<W> {
     }
 
     /// Sets the title to be displayed in the top border
-    pub fn title<T: Into<String>>(mut self, title: T) -> Self {
+    pub fn title<T: Into<Line<'a>>>(mut self, title: T) -> Self {
         self.title = Some(title.into());
         self
     }
@@ -191,21 +208,16 @@ impl<W> GradientWrapper<W> {
         );
 
         // Draw ROUNDED corners WITH colors (using Unicode rounded corner characters)
-        buf.get_mut(area.left(), area.top())
-            .set_char('╭') // Rounded top-left
-            .set_fg(top_left_color);
-
-        buf.get_mut(area.right() - 1, area.top())
-            .set_char('╮') // Rounded top-right
-            .set_fg(top_right_color);
-
-        buf.get_mut(area.left(), area.bottom() - 1)
-            .set_char('╰') // Rounded bottom-left
-            .set_fg(bottom_left_color);
-
-        buf.get_mut(area.right() - 1, area.bottom() - 1)
-            .set_char('╯') // Rounded bottom-right
-            .set_fg(bottom_right_color);
+        [
+            (area.left(), area.top(), '╭', top_left_color),
+            (area.right() - 1, area.top(), '╮', top_right_color),
+            (area.left(), area.bottom() - 1, '╰', bottom_left_color),
+            (area.right() - 1, area.bottom() - 1, '╯', bottom_right_color),
+        ]
+        .into_iter()
+        .for_each(|(x, y, ch, fg)| {
+            set_c_fg(buf, x, y, Some(fg), ch);
+        });
 
         // Draw top and bottom borders with horizontal gradient
         for x in area.left() + 1..area.right() - 1 {
@@ -214,11 +226,8 @@ impl<W> GradientWrapper<W> {
             let b_color =
                 interpolate_color(config.bottom_start, config.bottom_end, (ratio - 1.0).abs());
 
-            buf.get_mut(x, area.top()).set_char('─').set_fg(color);
-
-            buf.get_mut(x, area.bottom() - 1)
-                .set_char('─')
-                .set_fg(b_color);
+            set_c_fg(buf, x, area.top(), Some(color), '─');
+            set_c_fg(buf, x, area.bottom() - 1, Some(b_color), '─');
         }
 
         // Draw left and right borders with vertical gradient
@@ -227,33 +236,30 @@ impl<W> GradientWrapper<W> {
             let r_color = interpolate_color(config.right_start, config.right_end, ratio);
             let color = interpolate_color(config.left_start, config.left_end, (ratio - 1.0).abs());
 
-            buf.get_mut(area.left(), y).set_char('│').set_fg(color);
-
-            buf.get_mut(area.right() - 1, y)
-                .set_char('│')
-                .set_fg(r_color);
+            set_c_fg(buf, area.left(), y, Some(color), '│');
+            set_c_fg(buf, area.right() - 1, y, Some(r_color), '│');
         }
 
         // Draw title if provided
         if let Some(ref title) = self.title {
-            let title_x = area.x + (area.width.saturating_sub(title.len() as u16 + 2)) / 2;
+            let title_x = area.x + (area.width.saturating_sub(title.width() as u16 + 2)) / 2;
             if title_x < area.right() - 1 {
-                buf.get_mut(title_x, area.top()).set_char('┤');
-                for (i, ch) in title.chars().enumerate() {
-                    if title_x + 1 + (i as u16) < area.right() - 1 {
-                        buf.get_mut(title_x + 1 + i as u16, area.top())
-                            .set_char(ch)
-                            .set_fg(Color::White);
-                    }
-                }
-                buf.get_mut(title_x + 1 + title.len() as u16, area.top())
-                    .set_char('├');
+                set_c_fg(buf, title_x, area.top(), None, '┤');
+
+                buf.set_line(
+                    title_x + 1,
+                    area.top(),
+                    title,
+                    title.width() as u16,
+                );
+
+                set_c_fg(buf, title_x + 1 + title.width() as u16, area.top(), None, '├');
             }
         }
     }
 }
 
-impl<W: Widget> Widget for GradientWrapper<W> {
+impl<W: Widget> Widget for GradientWrapper<'_, W> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         // Draw gradient border first
         self.draw_gradient_border(area, buf);

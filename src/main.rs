@@ -32,9 +32,9 @@ async fn main() -> color_eyre::Result<()> {
     let mut coins = opts.watching.clone();
 
     println!("[DEBUG] fetching coinbase pairs...");
-    let coinbase_pairs = get_cb_pairs().await.unwrap();
+    // let coinbase_pairs = get_cb_pairs().await.unwrap();
     println!("[DEBUG] fetching kraken pairs...");
-    let kraken_pairs = get_kk_pairs().await.unwrap();
+    // let kraken_pairs = get_kk_pairs().await.unwrap();
 
     println!("[DEBUG] starting coinbase websocket...");
     let mut cb = tokio::spawn(BaseSocket::connect_cb(coins.clone()));
@@ -51,9 +51,15 @@ async fn main() -> color_eyre::Result<()> {
         loop {
             tokio::select! {
                 _ = &mut cb => {
+                    let mut l = ws_connected.lock();
+                    l.coinbase = false;
+
                     cb = tokio::spawn(BaseSocket::connect_cb(coins.clone()));
                 },
                 _ = &mut kk => {
+                    let mut l = ws_connected.lock();
+                    l.kraken = false;
+
                     kk = tokio::spawn(BaseSocket::connect_kk());
                 }
                 _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {}

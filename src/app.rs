@@ -15,7 +15,6 @@ use crate::{
 };
 
 use chrono::{DateTime, Local, TimeZone, Utc};
-use color_eyre::owo_colors::OwoColorize;
 use crossterm::event::KeyEventKind;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -391,7 +390,13 @@ impl App {
         .map(|i: u64| (i as f64, i.pow(2) as f64))
         .collect::<Vec<(f64, f64)>>(); */
 
-        let buys = tmp_data
+        let index = if tmp_data.len() <= 50 {
+            0
+        } else {
+            tmp_data.len() - 50
+        };
+
+        let buys = tmp_data[index..]
             .iter()
             .filter(|f| f.side.clone().unwrap_or("none".into()) == "buy")
             .count();
@@ -404,7 +409,18 @@ impl App {
             Color::Rgb(255, 0, 100)
         };
 
-        let title = format!("{} - {}", coin, tmp_data.len());
+        let def = WsMessage::default();
+        let last_entry = tmp_data.last().unwrap_or(&def);
+
+        let title = format!(
+            "{} - 24h High: {} - 24h Low: {}",
+            coin,
+            last_entry.high_24h.clone().unwrap_or("0".into()),
+            last_entry.low_24h.clone().unwrap_or("0".into())
+        );
+
+        let title = Line::from(vec!["hello".green()]);
+
 
         let chart = Chart::new(vec![
             Dataset::default()
