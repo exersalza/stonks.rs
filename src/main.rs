@@ -27,7 +27,7 @@ pub mod gradient_widget;
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     let opts = CliOpts::parse();
-    // color_eyre::install()?;
+    color_eyre::install()?;
 
     let mut coins = opts.watching.clone();
 

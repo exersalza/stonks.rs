@@ -1,9 +1,15 @@
 use lazy_static::lazy_static;
 use ratatui::style::Color;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env::temp_dir, path::{Path, PathBuf}};
+use serde_json::json;
+use std::{
+    collections::HashMap, env::temp_dir, fs::OpenOptions, io::Write, path::{Path, PathBuf}
+};
 
-use crate::{crypto::{CoinbasePair, KrakenPair, Pair}, gradient_widget::GradientConfig};
+use crate::{
+    crypto::{CoinbasePair, KrakenPair, Pair},
+    gradient_widget::GradientConfig,
+};
 
 pub const CB_FEED_URL: &'static str = "wss://ws-feed.exchange.coinbase.com";
 pub const KK_WS_URL: &'static str = "wss://ws.kraken.com/v2";
@@ -107,35 +113,62 @@ pub fn rotate_string(i: &mut String) -> String {
     format!("{}{}", i.pop().unwrap(), i)
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoinCache {
     file_location: PathBuf,
     pairs: Vec<Pair>,
+    check_str: String,
 }
-
 
 impl CoinCache {
     pub fn new() -> Self {
-        let filename = Self::gen_file_name();
-
-        println!("{}{}", temp_dir().display(), filename);
-
         Self {
             file_location: temp_dir(),
-            pairs: vec![]
+            pairs: vec![],
+            check_str: String::from_utf8(base64::encode("stonks.rs").into()).unwrap(),
         }
     }
 
-    pub fn sync_to_file(d: &Vec<Pair>) -> anyhow::Result<()> {
+    pub fn sync_to_file(&self) -> anyhow::Result<()> {
+        let filename = self.gen_file_name();
+
+        if filename.is_file() {
+            anyhow::bail!("File already exists")
+        }
+
+        let mut f = OpenOptions::new()
+            .truncate(true)
+            .create(true)
+            .write(true)
+            .open(filename)?;
+
+
+        let data = json!(self.pairs).to_string();
+
+        match f.write(data.as_bytes()) {
+            Ok(_) => (),
+            Err(e) => anyhow::bail!(e),
+        };
+
         Ok(())
     }
 
-    fn gen_file_name() -> String {
-        let mark = String::from_utf8( base64::encode("stonks.rs").into() ).unwrap();
+    pub fn sync_from_file(&self) -> anyhow::Result<()> {
+        let filename = self.gen_file_name();
+
+
+        let f = OpenOptions::new()
+            .read(true)
+            .open(filename)?;
+
+
+        Ok(())
+    }
+
+    fn gen_file_name(&self) -> PathBuf {
+        let mark = self.check_str.clone();
         let today = chrono::Utc::now().format("%Y-%d-%m").to_string();
 
-
-        format!("{today}{mark}")
+        PathBuf::from(format!("{}{today}{mark}", temp_dir().display()))
     }
 }
