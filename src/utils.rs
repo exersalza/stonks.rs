@@ -2,8 +2,13 @@ use lazy_static::lazy_static;
 use ratatui::style::Color;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::fs::remove_file;
 use std::{
-    collections::HashMap, env::temp_dir, fs::OpenOptions, io::Write, path::{Path, PathBuf}
+    collections::HashMap,
+    env::temp_dir,
+    fs::OpenOptions,
+    io::{Read, Write},
+    path::{Path, PathBuf},
 };
 
 use crate::{
@@ -115,18 +120,52 @@ pub fn rotate_string(i: &mut String) -> String {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoinCache {
+    pub cb_thread: bool,
+    pub kk_thread: bool,
     file_location: PathBuf,
     pairs: Vec<Pair>,
     check_str: String,
 }
 
+#[allow(unused)]
 impl CoinCache {
     pub fn new() -> Self {
-        Self {
+        let pairs = vec![];
+
+        let mut f = Self {
+            cb_thread: false,
+            kk_thread: false,
             file_location: temp_dir(),
-            pairs: vec![],
-            check_str: String::from_utf8(base64::encode("stonks.rs").into()).unwrap(),
+            pairs,
+            check_str: base64::encode("stonks.rs_stonks.rs"),
+        };
+
+        // this is fkcing bs what i'm doing, but fck it
+        if f.gen_file_name().is_file() {
+            match f.sync_from_file() {
+                Err(e) => println!("[DEBUG] file seems to be broken idk {e}"),
+                _ => return f,
+            }
         }
+
+        let mut temp_file_cache = vec![];
+        for i in std::fs::read_dir(temp_dir()).unwrap() {
+            let entry = i.unwrap();
+
+            let entry_name = entry.path().display().to_string();
+            if entry_name.contains(&f.check_str) {
+                temp_file_cache.push(entry_name);
+            }
+        }
+
+
+        // remove old files, can also be other files with containing the same base64 string
+        temp_file_cache.iter().for_each(|f| {
+            // we dont care about errors in this case as we just ballin
+            let _ = std::fs::remove_file(f); // !important !important !important
+        });
+
+        f
     }
 
     pub fn sync_to_file(&self) -> anyhow::Result<()> {
@@ -142,29 +181,34 @@ impl CoinCache {
             .write(true)
             .open(filename)?;
 
-
         let data = json!(self.pairs).to_string();
 
         match f.write(data.as_bytes()) {
-            Ok(_) => (),
             Err(e) => anyhow::bail!(e),
+            _ => (),
         };
 
         Ok(())
     }
 
-    pub fn sync_from_file(&self) -> anyhow::Result<()> {
+    pub fn sync_from_file(&mut self) -> anyhow::Result<()> {
         let filename = self.gen_file_name();
 
+        let mut f = OpenOptions::new().read(true).open(filename)?;
 
-        let f = OpenOptions::new()
-            .read(true)
-            .open(filename)?;
+        let mut buf = String::new();
 
+        f.read_to_string(&mut buf)?;
+        self.pairs = serde_json::from_str(&buf)?;
 
         Ok(())
     }
 
+    ///
+    ///
+    /// # Returns
+    ///
+    ///
     fn gen_file_name(&self) -> PathBuf {
         let mark = self.check_str.clone();
         let today = chrono::Utc::now().format("%Y-%d-%m").to_string();

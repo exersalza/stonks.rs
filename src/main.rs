@@ -36,12 +36,14 @@ async fn main() -> color_eyre::Result<()> {
     }
 
 
+    println!("[DEBUG] fetching coinbase pairs...");
+    // let coinbase_pairs = get_cb_pairs().await.unwrap();
     let cc = CoinCache::new();
+    // let _ = dbg!(cc.sync_to_file());
+
 
     return Ok(());
 
-    println!("[DEBUG] fetching coinbase pairs...");
-    // let coinbase_pairs = get_cb_pairs().await.unwrap();
     println!("[DEBUG] fetching kraken pairs...");
     // let kraken_pairs = get_kk_pairs().await.unwrap();
 

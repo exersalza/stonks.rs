@@ -357,14 +357,6 @@ impl App {
         let hi = price_1per * (100.0 + self.get_coin_mult(&coin));
         let lo = price_1per * (100.0 - self.get_coin_mult(&coin));
 
-        /* let (hi, lo) = match tmp_data.last() {
-            Some(v) => (
-                v.high_24h.parse::<f64>().unwrap_or(0.0),
-                v.low_24h.parse::<f64>().unwrap_or(0.0),
-            ),
-            None => return,
-        }; */
-
         let crc = match coin.split('-').collect::<Vec<&str>>()[1]
             .to_uppercase()
             .as_str()
@@ -386,16 +378,13 @@ impl App {
             ])
             .style(Color::White);
 
-        /* let data = (1..1000)
-        .map(|i: u64| (i as f64, i.pow(2) as f64))
-        .collect::<Vec<(f64, f64)>>(); */
-
         let index = if tmp_data.len() <= 50 {
             0
         } else {
             tmp_data.len() - 50
         };
 
+        // get the last 50 messages and decide on that if we go green or nah
         let buys = tmp_data[index..]
             .iter()
             .filter(|f| f.side.clone().unwrap_or("none".into()) == "buy")

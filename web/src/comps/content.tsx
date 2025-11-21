@@ -7,15 +7,10 @@ const PROJECT_LINK = "http://github.com/exersalza/stonks.rs";
 
 
 export const Badge = ({ title, content }: { title?: any, content: any }) => {
+    title;
     return (
         <div className={"border-white border-1 rounded-lg select-none flex gap-1"}>
-            {
-                title ?
-                    <p className={"bg-zinc-600 rounded-[6px] px-2 flex justify-center items-center"}>
-                        {title}
-                    </p> : ""
-            }
-            <p className={"pr-2"}>
+            <p className={"px-2"}>
                 {content}
             </p>
         </div>
