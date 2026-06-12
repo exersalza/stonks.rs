@@ -11,15 +11,15 @@
         "deploy": "gh-pages -d dist/"
     },
     "dependencies": {
-        "@tailwindcss/vite": "^4.1.14",
+        "@tailwindcss/vite": "^4.3.1",
         "preact": "^10.27.2",
         "tailwindcss": "^4.1.14"
     },
     "devDependencies": {
-        "@preact/preset-vite": "^2.10.2",
+        "@preact/preset-vite": "^2.10.5",
         "@types/node": "^24.6.0",
         "gh-pages": "^6.3.0",
         "typescript": "~5.9.3",
-        "vite": "^7.3.2"
+        "vite": "^8.0.16"
     }
 }
